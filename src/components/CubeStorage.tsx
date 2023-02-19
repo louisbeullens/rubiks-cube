@@ -79,8 +79,10 @@ export const CubeStorage = React.forwardRef<
   const onInsert = (colors: string[], state: TCubeState) => {
     const item = createNewItem(colors, state);
     persistItem(item);
-    setItems((items) => [...items, item]);
+    const newItems = [...items, item]
+    setItems(newItems);
     setSelectedItem(item);
+    onChange?.(item, newItems.length-1, newItems)
   };
 
   const onRemove = (item: IListItem, i: number) => {

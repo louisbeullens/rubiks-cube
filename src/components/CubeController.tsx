@@ -54,6 +54,7 @@ export const CubeController = ({
   const children = React.Children.toArray(
     untypedChildren
   ) as React.ReactElement[];
+
   const Cube = children.find(
     (child) => React.isValidElement(child) && child.type === LatchCube
   ) as React.ReactElement<ICubeProps> | undefined;
@@ -65,22 +66,25 @@ export const CubeController = ({
   const [perspectiveState, setPerspective] = React.useState(
     perspectiveProp ?? EPerspective.UNFOLDED
   );
-  const perspective = perspectiveProp ?? perspectiveState;
-
   const [colors, setColors] = React.useState<string[]>(latchCubeColors);
   const [state, setState] = React.useState(createSolvedLatchCubeState());
-
   const [autoStorage, setAutoStorage] = React.useState(true);
   const [editable, setEditable] = React.useState(true);
 
-  const onAutoStorageChange = () => setAutoStorage((toggle) => !toggle);
-  const onEditableChange = () => setEditable((toggle) => !toggle);
+  // allow for enabled moves to asyncronously renew when this controller
+  // does not control the cube state
+  const [enabledMoves, setEnabledMoves] = React.useState<TMoveNames[]>([]);
 
   const cubeRefInternal = React.useRef<ICubeHandle>(null);
   const storageRef = React.useRef<ICubeStorageHandle>(null);
 
+  const perspective = perspectiveProp ?? perspectiveState;
+
+  const onAutoStorageChange = () => setAutoStorage((toggle) => !toggle);
+  const onEditableChange = () => setEditable((toggle) => !toggle);
+
   const onSaveClickInternal = (dataParam?: IStorageData) => {
-    const createNew = dataParam ? false : true
+    const createNew = dataParam ? false : true;
     const currentState = Cube ? state : cubeRef?.current?.getState();
     if (!currentState || (!storageRef.current && !handleSave)) {
       return;
@@ -94,29 +98,37 @@ export const CubeController = ({
     }
   };
 
-  const updateAllowedMoves = (stateParam?: TCubeState) => {
+  // asyncronously rerender to refresh enabledMoves
+  const renewEnabledMoves = React.useCallback(() => {
+    window.setTimeout(() => setEnabledMoves([]), 10);
+  }, []);
+
+  // invoke renewEnabledMoves when component mounts
+  // required when controller uses cubeRef
+  React.useEffect(() => renewEnabledMoves(), [renewEnabledMoves]);
+
+  const updateAllowedMoves = (
+    allowedMoves: TMoveNames[],
+    stateParam?: TCubeState
+  ) => {
     const currentState =
       stateParam || (Cube ? state : cubeRef?.current?.getState());
 
     if (!currentState) {
-      return [];
+      return;
     }
     const canRotate = Cube
       ? cubeRefInternal.current?.canFaceRotate
       : cubeRef?.current?.canFaceRotate;
-    return getAllowedMoves(currentState, canRotate);
+    allowedMoves.splice(
+      0,
+      Infinity,
+      ...getAllowedMoves(currentState, canRotate)
+    );
   };
 
-  let [enabledMoves, setEnabledMoves] = React.useState<
-    ReturnType<typeof getAllowedMoves>
-  >([]);
-  enabledMoves = updateAllowedMoves();
-
-  const renewButtonStates = React.useCallback(() => {
-    window.setTimeout(() => setEnabledMoves([]), 10);
-  }, []);
-
-  React.useEffect(() => renewButtonStates(), [renewButtonStates]);
+  // immediately renew allowedMoves
+  updateAllowedMoves(enabledMoves);
 
   const onPerspectiveChangeInternal: React.ChangeEventHandler<
     HTMLSelectElement
@@ -166,7 +178,7 @@ export const CubeController = ({
         setColors((current) => colors || current);
         setState(newState);
       } else {
-        renewButtonStates();
+        renewEnabledMoves();
       }
     },
     [
@@ -175,7 +187,7 @@ export const CubeController = ({
       perspective,
       handleLoad,
       onPerspectiveChange,
-      renewButtonStates,
+      renewEnabledMoves,
     ]
   );
 

@@ -9,8 +9,10 @@ function App() {
     EPerspective.UNFOLDED
   );
 
-  const onPerspectiveChange = (perspective: EPerspective) =>
-    setCubePerspective(perspective);
+  const onPerspectiveChange = React.useCallback(
+    (perspective: EPerspective) => setCubePerspective(perspective),
+    []
+  );
 
   return (
     <Flex row width="100vw">
