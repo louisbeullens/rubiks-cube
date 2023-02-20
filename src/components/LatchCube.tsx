@@ -26,7 +26,7 @@ enum EConstraint {
 
 const renderFace: TRenderFace = (renderProps) => {
   const elements = defaultRenderFace(renderProps);
-  const { state, faceIndex, size, colors, onLeftClick, onRightClick } =
+  const { state, faceIndex, size, onRightClick } =
     renderProps;
   const faceConstraints = state[faceIndex].map(
     (el) => (el & CONSTRAINT_MASK) >> COLOR_BITS
