@@ -272,7 +272,7 @@ export const CubeController = ({
           <Flex grow row>
             <button onClick={() => onLoadClickInternal()}>Load</button>
             <button onClick={() => onSaveClickInternal()}>Save</button>
-            <button onClick={onSolveClickInternal}>Solve</button>
+            {/* <button onClick={onSolveClickInternal}>Solve</button> */}
           </Flex>
           <Flex grow row>
             Perspective
