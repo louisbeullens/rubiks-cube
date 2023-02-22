@@ -1,5 +1,5 @@
 import React from "react";
-import { clone } from "../utils";
+import { base64Encode, clone } from "../utils";
 import {
   allMoves,
   getAllowedMoves,
@@ -12,8 +12,10 @@ import { EPerspective, ICubeHandle, ICubeProps } from "./RubiksCube";
 import { Flex } from "./Flex";
 import {
   createSolvedLatchCubeState,
+  deserializeLatchCube,
   LatchCube,
   latchCubeColors,
+  serializeLatchCube,
 } from "./LatchCube";
 import {
   CubeStorage,
@@ -32,8 +34,10 @@ type TAllowedChildProps = ICubeProps | ICubeStorageProps;
 
 export interface ICubeControlProps {
   cubeRef?: React.RefObject<ICubeHandle>;
+  permaLink?: string | null;
   perspective?: EPerspective;
   onMoveButtonClick?: (move: TMoveNames) => void;
+  onPermaLinkChange?: (token: string) => void;
   onPerspectiveChange?: (perspective: EPerspective) => void;
   handleSave?: (data: IStorageData, createNew?: boolean) => void;
   handleLoad?: () => IStorageData | undefined;
@@ -44,7 +48,9 @@ export interface ICubeControlProps {
 
 export const CubeController = ({
   cubeRef,
+  permaLink,
   perspective: perspectiveProp,
+  onPermaLinkChange,
   onMoveButtonClick,
   onPerspectiveChange,
   handleSave,
@@ -80,17 +86,35 @@ export const CubeController = ({
 
   const perspective = perspectiveProp ?? perspectiveState;
 
+  React.useEffect(() => {
+    if (!permaLink) {
+      return
+    }
+    const data = deserializeLatchCube(permaLink)
+    if (perspectiveProp === undefined) {
+      setPerspective(data.perspective ?? EPerspective.UNFOLDED)
+    }
+      onPerspectiveChange?.(data.perspective ?? EPerspective.UNFOLDED)
+      setColors(colors => data.colors ?? colors)
+      setState(data.state)
+  }, [permaLink, onPerspectiveChange])
+
   const onAutoStorageChange = () => setAutoStorage((toggle) => !toggle);
   const onEditableChange = () => setEditable((toggle) => !toggle);
 
   const onSaveClickInternal = (dataParam?: IStorageData) => {
     const createNew = dataParam ? false : true;
+    
     const currentState = Cube ? state : cubeRef?.current?.getState();
     if (!currentState || (!storageRef.current && !handleSave)) {
       return;
     }
     const newState = clone(currentState);
     const data = dataParam || { perspective, colors, state: newState };
+    if (createNew) {
+      const permaLink = serializeLatchCube(data)
+      onPermaLinkChange?.(permaLink)
+    }
     if (storageRef.current) {
       storageRef.current.save(data, createNew);
     } else if (handleSave) {
@@ -195,6 +219,18 @@ export const CubeController = ({
     if (!Cube) {
       return;
     }
+    const data = { perspective, colors, state };
+    const serializedData = serializeLatchCube(data);
+    const deserializedData = deserializeLatchCube(serializedData);
+    console.log(
+      { ...data, perspective: EPerspective[data.perspective] },
+      serializedData,
+      {
+        ...deserializedData,
+        perspective:
+          EPerspective[deserializedData.perspective || EPerspective.UNFOLDED],
+      }
+    );
     if (isCubeSolved(state)) {
       console.log("solved");
     }
@@ -204,7 +240,10 @@ export const CubeController = ({
 
   const onCubeChange = React.useCallback((state: TCubeState) => {
     setState(state);
-  }, []);
+    if (autoStorage) {
+      onSaveClickInternal({ perspective, colors, state });
+    }
+  }, [autoStorage]);
 
   const onStorageChange = React.useCallback<TArrayCallback>(
     (item) => {
@@ -272,7 +311,7 @@ export const CubeController = ({
           <Flex grow row>
             <button onClick={() => onLoadClickInternal()}>Load</button>
             <button onClick={() => onSaveClickInternal()}>Save</button>
-            {/* <button onClick={onSolveClickInternal}>Solve</button> */}
+            <button onClick={onSolveClickInternal}>Solve</button>
           </Flex>
           <Flex grow row>
             Perspective

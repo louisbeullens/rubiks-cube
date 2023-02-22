@@ -58,7 +58,7 @@ export const CubeStorage = React.forwardRef<
   }, []);
 
   const onChangeInternal: TArrayCallback = (item, i, arr) => {
-    setSelectedItem((selected) => (item !== selected ? item : undefined));
+    setSelectedItem(item);
     onChange?.(item, i, arr);
   };
 
@@ -79,13 +79,16 @@ export const CubeStorage = React.forwardRef<
   const onInsert = (colors: string[], state: TCubeState) => {
     const item = createNewItem(colors, state);
     persistItem(item);
-    const newItems = [...items, item]
+    const newItems = [...items, item];
     setItems(newItems);
     setSelectedItem(item);
-    onChange?.(item, newItems.length-1, newItems)
+    onChange?.(item, newItems.length - 1, newItems);
   };
 
-  const onRemove = (item: IListItem, i: number) => {
+  const onRemove: TArrayCallback = (item, i) => {
+    if (!item) {
+      return;
+    }
     window.localStorage.removeItem(`cube-${item.id}`);
     if (item === selectedItem) {
       setSelectedItem(undefined);

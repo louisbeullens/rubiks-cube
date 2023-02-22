@@ -11,7 +11,11 @@ export interface IListItem {
   state: TCubeState;
 }
 
-export type TArrayCallback = (value: IListItem, i: number, arr: IListItem[]) => void;
+export type TArrayCallback = (
+  value: IListItem | undefined,
+  i: number,
+  arr: IListItem[]
+) => void;
 
 interface ICubeListProps {
   value?: IListItem;
@@ -20,7 +24,12 @@ interface ICubeListProps {
   onRemove?: TArrayCallback;
 }
 
-export const CubeList = ({ value, items, onChange, onRemove }: ICubeListProps) => {
+export const CubeList = ({
+  value,
+  items,
+  onChange,
+  onRemove,
+}: ICubeListProps) => {
   const size = "25px";
   const position = "relative" as const;
   const padding = size;
@@ -30,13 +39,23 @@ export const CubeList = ({ value, items, onChange, onRemove }: ICubeListProps) =
   return (
     <Flex column>
       {items.map((item, i) => {
-          const customBorder = item === value ? "2px solid blue" : border;
-          return (
-              <div key={item.id} style={{ ...style, border: customBorder }}>
-            <div onClick={() => onChange?.(items[i], i, items)}>
+        const isSelectedItem = item === value;
+        const customBorder = isSelectedItem ? "2px solid blue" : border;
+        return (
+          <div key={item.id} style={{ ...style, border: customBorder }}>
+            <div
+              onClick={() =>
+                onChange?.(!isSelectedItem ? item : undefined, i, items)
+              }
+            >
               <LatchCube editable={false} scale={0.5} {...item} />
             </div>
-            <button onClick={() => onRemove?.(items[i], i, items)} style={{ position: "absolute", right: size, bottom: size }}>-</button>
+            <button
+              onClick={() => onRemove?.(items[i], i, items)}
+              style={{ position: "absolute", right: size, bottom: size }}
+            >
+              -
+            </button>
           </div>
         );
       })}
