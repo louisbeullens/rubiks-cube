@@ -1,6 +1,7 @@
+import { getCubeCharacteristicsByType } from "../cube-characteristics";
 import { AbstractList, IListProps, IRenderItemProps } from "./AbstractList";
 import { IStorageData } from "./CubeStorage.types";
-import { LatchCube } from "./LatchCube";
+import { RubiksCube } from "./RubiksCube";
 
 const size = "25px";
 const itemPosition = "relative" as const;
@@ -19,12 +20,16 @@ const renderItem = ({
   const border = isSelected ? "2px solid blue" : "1px solid black";
   const style = { position: itemPosition, border, padding: size };
 
-  const { perspective, colors, state } = item;
+  const { type, perspective, colors, state } = item;
+  const { renderFace } = getCubeCharacteristicsByType(type);
 
   return (
     <div {...{ style }}>
       <div {...{ onClick }}>
-        <LatchCube scale={0.5} {...{ perspective, colors, state }} />
+        <RubiksCube
+          scale={0.5}
+          {...{ renderFace, perspective, colors, state }}
+        />
       </div>
       <button style={removeButtonStyle} onClick={onRemove}>
         -

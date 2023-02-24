@@ -1,5 +1,4 @@
 import React from "react";
-
 import { usePropOverState } from "../hooks";
 import {
   allMoves,
@@ -10,7 +9,6 @@ import {
   TCubeState,
   TMoveNames,
 } from "../rubiks-cube";
-
 import { ICubeHandle } from "./RubiksCube.types";
 
 interface IMoveButtonsProps {

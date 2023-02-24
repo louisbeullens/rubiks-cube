@@ -1,5 +1,4 @@
 import React from "react";
-
 import { ECubeType, ICubeCharacteristic } from "../cube-characteristics";
 import { useLatestRef, usePropOverState } from "../hooks";
 import {
@@ -12,7 +11,6 @@ import {
   TCubeState,
 } from "../rubiks-cube";
 import { clone } from "../utils";
-
 import {
   EPerspective,
   ICubeHandle,

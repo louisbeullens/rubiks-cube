@@ -1,5 +1,4 @@
 import React from "react";
-
 import {
   ECubeType,
   getAllCubeCharacteristics,
@@ -7,7 +6,6 @@ import {
   ICubeCharacteristic,
 } from "../cube-characteristics";
 import { createNewItem, persistItem, retrieveItems } from "../storage-utils";
-
 import { IListItem, IListProps } from "./AbstractList";
 import { CubeList } from "./CubeList";
 import {

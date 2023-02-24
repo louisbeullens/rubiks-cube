@@ -1,5 +1,4 @@
 import { Flex } from "./Flex";
-import { LatchCube } from "./LatchCube";
 
 export type IListItem<T extends {}> = T & { id: string };
 

@@ -1,5 +1,4 @@
 import React from "react";
-
 import { useLatestRef } from "./useLatestRef";
 
 export const usePropOverState = <T extends any>(stateParam: T, prop?: T) => {

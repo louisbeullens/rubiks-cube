@@ -1,5 +1,4 @@
 import React from "react";
-
 import { ECubeType, ICubeCharacteristic } from "../cube-characteristics";
 import {
   COLOR_BITS,
@@ -9,7 +8,6 @@ import {
   TCubeState,
 } from "../rubiks-cube";
 import { clone } from "../utils";
-
 import { defaultRenderFace, RubiksCube } from "./RubiksCube";
 import {
   ICubeHandle,

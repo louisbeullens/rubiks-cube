@@ -41,37 +41,24 @@
           "error",
           {
             "groups": [
-              // `react` first, `next` second, then packages starting with a character
               [
+                // `react` first, then packages starting with a character
                 "^react$",
-                "^next",
-                "^[a-z]"
-              ],
-              // Packages starting with `@`
-              [
-                "^@"
-              ],
-              // Packages starting with `~`
-              [
-                "^~"
-              ],
-              // Imports starting with `../`
-              [
+                "^[a-z]",
+                // Packages starting with `@`
+                "^@",
+                // Packages starting with `~`
+                "^~",
+                // Imports starting with `../`
                 "^\\.\\.(?!/?$)",
-                "^\\.\\./?$"
-              ],
-              // Imports starting with `./`
-              [
+                "^\\.\\./?$",
+                // Imports starting with `./`
                 "^\\./(?=.*/)(?!/?$)",
                 "^\\.(?!/?$)",
-                "^\\./?$"
-              ],
-              // Style imports
-              [
-                "^.+\\.s?css$"
-              ],
-              // Side effect imports
-              [
+                "^\\./?$",
+                // Style imports
+                "^.+\\.s?css$",
+                // Side effect imports
                 "^\\u0000"
               ]
             ]

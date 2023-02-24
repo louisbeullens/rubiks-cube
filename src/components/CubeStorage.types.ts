@@ -1,6 +1,5 @@
 import { ECubeType } from "../cube-characteristics";
 import { TCubeState } from "../rubiks-cube";
-
 import { EPerspective } from "./RubiksCube.types";
 
 export interface IStorageData {

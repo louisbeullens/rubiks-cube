@@ -1,5 +1,4 @@
 import React from "react";
-
 import {
   deserializeCube,
   ECubeType,
@@ -13,7 +12,6 @@ import {
   TMoveNames,
 } from "../rubiks-cube";
 import { clone } from "../utils";
-
 import { CubeStorage } from "./CubeStorage";
 import {
   ICubeStorageHandle,
