@@ -47,7 +47,6 @@ export const retrieveItems = () => {
       continue;
     }
     const id = extractIdRegex.exec(key)?.at(1);
-    console.log({ key, id });
     if (!id) {
       continue;
     }
