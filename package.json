@@ -50,8 +50,5 @@
     "gh-pages": "^5.0.0",
     "husky": "^8.0.3",
     "prettier": "^2.8.4"
-  },
-  "husky": {
-    "pre-commit": "yarn lint"
   }
 }
