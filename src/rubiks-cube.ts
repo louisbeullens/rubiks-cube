@@ -23,11 +23,11 @@ export enum EFaceIndex {
 
 export enum EDirection {
   Clockwise = -1,
-  CounterClockwise = 1
+  CounterClockwise = 1,
 }
 
 export const COLOR_MASK = 0b00111;
-export const COLOR_BITS = Math.ceil(Math.log2(COLOR_MASK))
+export const COLOR_BITS = Math.ceil(Math.log2(COLOR_MASK));
 
 export const point2DToIndex = (x: number, y: number) => 3 * y + x + 4;
 

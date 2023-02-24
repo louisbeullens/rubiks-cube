@@ -1,8 +1,18 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import "./index.css";
+import { BrowserRouter } from "react-router-dom";
+
 import App from "./App";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import {
+  latchCubeCharacteristics,
+  rubiksCubeCharacteristics,
+} from "./components";
+import { registerCube } from "./cube-characteristics";
+
+import "./index.css";
+
+registerCube(rubiksCubeCharacteristics);
+registerCube(latchCubeCharacteristics);
 
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement

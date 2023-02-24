@@ -54,7 +54,7 @@ export const Flex = ({
     justifyContent,
     flexWrap,
     flexGrow,
-    flexShrink
+    flexShrink,
   };
   return <div {...{ style }}>{children}</div>;
 };

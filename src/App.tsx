@@ -1,36 +1,54 @@
 import React from "react";
-import { EPerspective } from "./components/RubiksCube";
-import { CubeController } from "./components/CubeController";
-import { LatchCube } from "./components/LatchCube";
-import { CubeStorage, Flex } from "./components";
 import { useSearchParams } from "react-router-dom";
+
+import { CubeController } from "./components/CubeController";
+import {
+  CubeStorage,
+  EPerspective,
+  Flex,
+  ICubeHandle,
+  IStorageData,
+  LatchCube,
+  MoveButtons,
+  RubiksCube,
+} from "./components";
+import {
+  getCubeCharacteristicsByType,
+  serializeCube,
+} from "./cube-characteristics";
 
 function App() {
   const [params, setParams] = useSearchParams();
-  const onPermaLinkChange = React.useCallback((config: string) => {
-    setParams({ config });
-  }, []);
 
-  const [cubePerspective, setCubePerspective] = React.useState(
-    EPerspective.UNFOLDED
+  const handleSave = React.useCallback(
+    (data: IStorageData, createNew: boolean) => {
+      if (!createNew) {
+        return;
+      }
+      const characteristic = getCubeCharacteristicsByType(data.type);
+      const permaLink = serializeCube(data, characteristic.significantBits);
+      setParams({ config: permaLink });
+    },
+    [setParams]
   );
 
-  const onPerspectiveChange = React.useCallback((perspective: EPerspective) => {
-    setCubePerspective(perspective);
-  }, []);
+  const cubeRef = React.useRef<ICubeHandle>(null);
 
   return (
-    <Flex row width="100vw">
-      <CubeController
-        permaLink={params.get("config")}
-        // {...{ cubeRef }}
-        perspective={cubePerspective}
-        {...{ onPermaLinkChange, onPerspectiveChange }}
-      >
-        <LatchCube />
-        <CubeStorage />
-      </CubeController>
-    </Flex>
+    <>
+      <Flex row width="100vw" wrapReverse>
+        <CubeController
+          permaLink={params.get("config")}
+          {...{ handleSave }}
+          initialPerspective={EPerspective.UNFOLDED}
+        >
+          <RubiksCube />
+          <CubeStorage />
+        </CubeController>
+      </Flex>
+      {/* <LatchCube ref={cubeRef} perspective={EPerspective.ISOMETRIC} />
+      <MoveButtons {...{cubeRef}} /> */}
+    </>
   );
 }
 

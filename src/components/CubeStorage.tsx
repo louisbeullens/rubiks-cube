@@ -1,94 +1,56 @@
 import React from "react";
-import { createSolvedState, TCubeState } from "../rubiks-cube";
-import { CubeList, IListItem, TArrayCallback } from "./CubeList";
-import { ICubeControlProps, IStorageData } from "./CubeController";
+
+import {
+  ECubeType,
+  getAllCubeCharacteristics,
+  getCubeCharacteristicsByType,
+  ICubeCharacteristic,
+} from "../cube-characteristics";
+import { createNewItem, persistItem, retrieveItems } from "../storage-utils";
+
+import { IListItem, IListProps } from "./AbstractList";
+import { CubeList } from "./CubeList";
+import {
+  CONTAINER_WIDTH,
+  ICubeStorageHandle,
+  ICubeStorageProps,
+  IStorageData,
+} from "./CubeStorage.types";
 import { Flex } from "./Flex";
-import { EPerspective, rubiksCubeColors } from "./RubiksCube";
-import { createSolvedLatchCubeState, latchCubeColors } from "./LatchCube";
-import { clone } from "../utils";
-
-export interface ICubeStorageHandle {
-  save: (data: IStorageData, createNwe?: boolean) => void;
-  load: () => IStorageData | undefined;
-}
-
-export interface ICubeStorageProps
-  extends React.RefAttributes<ICubeStorageHandle> {
-  onChange?: TArrayCallback;
-  children?: React.ReactNode;
-}
-
-const listWidth = `${16 * 25}px`;
-
-const SOLVED_RUBIKSCUBE_STATE = createSolvedState();
-const SOLVED_LATCHCUBE_STATE = createSolvedLatchCubeState();
 
 export const CubeStorage = React.forwardRef<
   ICubeStorageHandle,
   ICubeStorageProps
->(({ onChange, children: Child }, ref) => {
-  const [items, setItems] = React.useState<IListItem[]>([]);
+>(({ onChange }, ref) => {
+  const [items, setItems] = React.useState<IListItem<IStorageData>[]>([]);
 
-  const [selectedItem, setSelectedItem] = React.useState<IListItem | undefined>(
-    undefined
-  );
+  const [selectedItem, setSelectedItem] = React.useState<
+    IListItem<IStorageData> | undefined
+  >(undefined);
 
   React.useEffect(() => {
-    const numKeys = window.localStorage.length;
-    const items: IListItem[] = [];
-    const keys = Array.from({ length: numKeys }, (el, i) =>
-      window.localStorage.key(i)
-    ).sort();
-    for (const key of keys) {
-      if (!key || !key.startsWith("cube-")) {
-        continue;
-      }
-      const id = /cube-(.+)/.exec(key)![1];
-      const itemString = window.localStorage.getItem(key);
-      if (!itemString) {
-        continue;
-      }
-      const item = JSON.parse(itemString) as IListItem;
-      items.push({ ...item, id });
-      setItems(items);
-      setSelectedItem(items[0]);
-      onChange?.(items[0], 0, items);
-    }
-    //   eslint-disable-next-line react-hooks/exhaustive-deps
+    const items = retrieveItems();
+    setItems(items);
+    setSelectedItem(items[0]);
+    onChange?.(items[0]);
+    // eslint-disable-next-line @grncdr/react-hooks/exhaustive-deps
   }, []);
 
-  const onChangeInternal: TArrayCallback = (item, i, arr) => {
+  const onChangeInternal: IListProps<IStorageData>["onChange"] = (item) => {
     setSelectedItem(item);
-    onChange?.(item, i, arr);
+    onChange?.(item);
   };
 
-  const persistItem = ({ id, perspective, colors, state }: IListItem) => {
-    window.localStorage.setItem(
-      `cube-${id}`,
-      JSON.stringify({ perspective, colors, state })
-    );
-  };
-
-  const createNewItem = (colors: string[], state: TCubeState): IListItem => ({
-    id: Date.now().toString(),
-    perspective: EPerspective.UNFOLDED,
-    colors,
-    state: clone(state),
-  });
-
-  const onInsert = (colors: string[], state: TCubeState) => {
-    const item = createNewItem(colors, state);
+  const onInsert = (characteristic: ICubeCharacteristic) => {
+    const item = createNewItem(characteristic);
     persistItem(item);
     const newItems = [...items, item];
     setItems(newItems);
     setSelectedItem(item);
-    onChange?.(item, newItems.length - 1, newItems);
+    onChange?.(item);
   };
 
-  const onRemove: TArrayCallback = (item, i) => {
-    if (!item) {
-      return;
-    }
+  const onRemove: IListProps<IStorageData>["onRemove"] = (item, i) => {
     window.localStorage.removeItem(`cube-${item.id}`);
     if (item === selectedItem) {
       setSelectedItem(undefined);
@@ -100,7 +62,8 @@ export const CubeStorage = React.forwardRef<
     (data: IStorageData, createNew: boolean = false) => {
       const item =
         selectedItem ||
-        (createNew && createNewItem(latchCubeColors, SOLVED_LATCHCUBE_STATE));
+        (createNew &&
+          createNewItem(getCubeCharacteristicsByType(ECubeType.Latch)));
       if (!item) {
         return;
       }
@@ -112,8 +75,6 @@ export const CubeStorage = React.forwardRef<
       item.colors = data.colors || item.colors;
       item.state = data.state;
       persistItem(item);
-      const stateAsString = JSON.stringify(item.state);
-      navigator.clipboard.writeText(JSON.stringify(stateAsString));
       setItems((items) => [...items]);
     },
     [selectedItem]
@@ -132,22 +93,26 @@ export const CubeStorage = React.forwardRef<
     [handleSave, handleLoad]
   );
 
+  const allCubes = getAllCubeCharacteristics();
+
   return (
     <>
-      {React.isValidElement<ICubeControlProps>(Child)
-        ? React.cloneElement(Child, { handleLoad, handleSave })
-        : null}
       <div
         style={{
-          width: listWidth,
-          height: "100vh",
+          width: CONTAINER_WIDTH,
+          boxSizing: "border-box",
+          maxHeight: "100vh",
           overflowX: "hidden",
         }}
       >
         <Flex column>
           <CubeList
             value={selectedItem}
-            {...{ items, onInsert, onChange: onChangeInternal, onRemove }}
+            {...{
+              items,
+              onChange: onChangeInternal,
+              onRemove,
+            }}
           />
           <div
             style={{
@@ -157,24 +122,13 @@ export const CubeStorage = React.forwardRef<
             }}
           >
             <Flex row>
-              <Flex grow column>
-                <button
-                  onClick={() =>
-                    onInsert?.(rubiksCubeColors, SOLVED_RUBIKSCUBE_STATE)
-                  }
-                >
-                  add Rubik's Cube
-                </button>
-              </Flex>
-              <Flex grow column>
-                <button
-                  onClick={() =>
-                    onInsert?.(latchCubeColors, SOLVED_LATCHCUBE_STATE)
-                  }
-                >
-                  add Latch Cube
-                </button>
-              </Flex>
+              {allCubes.map((characteristic) => (
+                <Flex key={characteristic.type} grow column>
+                  <button
+                    onClick={() => onInsert(characteristic)}
+                  >{`Add ${characteristic.name}`}</button>
+                </Flex>
+              ))}
             </Flex>
           </div>
         </Flex>

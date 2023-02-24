@@ -1,77 +1,29 @@
 import React from "react";
+
+import { ECubeType, ICubeCharacteristic } from "../cube-characteristics";
+import { useLatestRef, usePropOverState } from "../hooks";
 import {
-  allMoves,
   canRotateByMoveName,
   COLOR_MASK,
   createSolvedState,
   EFaceIndex,
   point2DToIndex,
   rotateByMoveName,
-  TCanFaceRotate,
   TCubeState,
 } from "../rubiks-cube";
 import { clone } from "../utils";
 
+import {
+  EPerspective,
+  ICubeHandle,
+  ICubeProps,
+  THandleClick,
+  TRenderFace,
+} from "./RubiksCube.types";
+
 const SIZE = 50;
 
-export type THandleClick = (
-  state: TCubeState,
-  faceIndex: EFaceIndex,
-  x: number,
-  y: number
-) => TCubeState;
-
-export type TRenderFace = (renderProps: {
-  state: TCubeState;
-  faceIndex: EFaceIndex;
-  scale: number,
-  size: number;
-  colors: string[];
-  onLeftClick?: (
-    ...params: Parameters<THandleClick>
-  ) => React.MouseEventHandler;
-  onRightClick?: (
-    ...params: Parameters<THandleClick>
-  ) => React.MouseEventHandler;
-}) => JSX.Element[];
-
-type TCallback = (newState: TCubeState, previousState: TCubeState) => void;
-
-export interface ICubeHandle {
-  canFaceRotate?: TCanFaceRotate;
-  canRotateByMoveName: (move: keyof typeof allMoves) => boolean;
-  rotateByMoveName: (move: keyof typeof allMoves) => void;
-  getState: () => TCubeState;
-}
-
-export interface ICubeProps extends React.RefAttributes<ICubeHandle> {
-  scale?: number,
-  editable?: boolean;
-  perspective?: EPerspective;
-  colors?: string[];
-  state?: TCubeState;
-  renderFace?: TRenderFace;
-  handleLeftClick?: THandleClick;
-  handleRightClick?: THandleClick;
-  onLeftClick?: TCallback;
-  onRightClick?: TCallback;
-  onChange?: TCallback;
-  handleCanFaceRotate?: TCanFaceRotate;
-}
-
-export enum EPerspective {
-  UNFOLDED = 1,
-  ISOMETRIC = 2,
-}
-
-export const rubiksCubeColors = [
-  "white",
-  "green",
-  "red",
-  "blue",
-  "orange",
-  "yellow",
-];
+const rubiksCubeColors = ["white", "green", "red", "blue", "orange", "yellow"];
 
 const defaultHandleLeftClick: THandleClick = (state, faceIndex, x, y) => {
   const newState = clone(state);
@@ -109,12 +61,20 @@ export const defaultRenderFace: TRenderFace = ({
           fill={colors[faceColors[i]]}
           onClick={onLeftClick?.(state, faceIndex, x, y)}
           onContextMenuCapture={onRightClick?.(state, faceIndex, x, y)}
-          strokeWidth={1/scale}
+          strokeWidth={1 / scale}
         />
       );
     }
   }
   return elements;
+};
+
+export const rubiksCubeCharacteristics: ICubeCharacteristic = {
+  name: "Rubik's Cube",
+  type: ECubeType.Rubiks,
+  significantBits: 3,
+  colors: rubiksCubeColors,
+  createSolvedState,
 };
 
 const perspectives = {
@@ -179,27 +139,37 @@ const perspectives = {
 export const RubiksCube = React.forwardRef<ICubeHandle, ICubeProps>(
   (
     {
-      scale=1,
+      scale = 1,
       editable = true,
       colors = rubiksCubeColors,
       perspective: perspectiveType,
       state: stateProp,
+      initialState,
       renderFace: renderFaceProp,
       handleCanFaceRotate,
       handleLeftClick,
       handleRightClick,
+      onChange,
       onLeftClick,
       onRightClick,
-      onChange,
     },
     forwardedRef
   ) => {
-    perspectiveType = perspectiveType || EPerspective.UNFOLDED;
-    const renderFace = renderFaceProp || defaultRenderFace;
-    handleLeftClick = handleLeftClick || defaultHandleLeftClick;
+    perspectiveType = perspectiveType ?? EPerspective.UNFOLDED;
+    const renderFace = renderFaceProp ?? defaultRenderFace;
+    handleLeftClick = handleLeftClick ?? defaultHandleLeftClick;
 
-    const [state, setState] = React.useState(stateProp || createSolvedState());
-    const statePropOrState = stateProp || state;
+    const [state, setState] = usePropOverState(
+      initialState ?? createSolvedState(),
+      stateProp
+    );
+
+    const handleCanFaceRotateRef = useLatestRef(handleCanFaceRotate);
+    const handleLeftClickRef = useLatestRef(handleLeftClick);
+    const handleRightClickRef = useLatestRef(handleRightClick);
+    const onChangeRef = useLatestRef(onChange);
+    const onLeftClickRef = useLatestRef(onLeftClick);
+    const onRightClickRef = useLatestRef(onRightClick);
 
     const perspective = perspectives[perspectiveType];
 
@@ -207,8 +177,8 @@ export const RubiksCube = React.forwardRef<ICubeHandle, ICubeProps>(
       ICubeHandle["canRotateByMoveName"]
     >(
       (move) =>
-        canRotateByMoveName(statePropOrState, move, handleCanFaceRotate),
-      [statePropOrState, handleCanFaceRotate]
+        canRotateByMoveName(state, move, handleCanFaceRotateRef.current),
+      [state]
     );
 
     const rotateCubeByMoveName = React.useCallback<
@@ -216,24 +186,23 @@ export const RubiksCube = React.forwardRef<ICubeHandle, ICubeProps>(
     >(
       (move) => {
         const newState = rotateByMoveName(
-          stateProp || state,
+          state,
           move,
-          handleCanFaceRotate
+          handleCanFaceRotateRef.current
         );
         if (!newState) {
-          return;
+          return undefined;
         }
-        onChange?.(newState, stateProp || state);
-        if (!stateProp) {
-          setState(newState);
-        }
+        setState(newState);
+        onChangeRef.current?.(newState, state);
+        return newState;
       },
-      [state, stateProp, onChange, handleCanFaceRotate]
+      [state, setState]
     );
 
     const getState = React.useCallback<ICubeHandle["getState"]>(
-      () => statePropOrState,
-      [statePropOrState]
+      () => state,
+      [state]
     );
 
     React.useImperativeHandle(
@@ -255,34 +224,30 @@ export const RubiksCube = React.forwardRef<ICubeHandle, ICubeProps>(
     const handleLeftClickWrapper =
       (state: TCubeState, faceIndex: EFaceIndex, x: number, y: number) =>
       () => {
-        if (!editable || !handleLeftClick) {
+        if (!editable) {
           return;
         }
-        const newState = handleLeftClick(state, faceIndex, x, y);
+        const newState = handleLeftClickRef.current(state, faceIndex, x, y);
         if (!newState) {
           return;
         }
-        if (!stateProp) {
-          setState(newState);
-        }
-        onLeftClick?.(newState, state);
+        setState(newState);
+        onLeftClickRef.current?.(newState, state);
       };
 
     const handleRightClickWrapper =
       (state: TCubeState, faceIndex: EFaceIndex, x: number, y: number) =>
       (e: React.MouseEvent) => {
-        if (!editable || !handleRightClick) {
+        if (!editable) {
           return;
         }
         e.preventDefault();
-        const newState = handleRightClick(state, faceIndex, x, y);
+        const newState = handleRightClickRef.current?.(state, faceIndex, x, y);
         if (!newState) {
           return;
         }
-        if (!stateProp) {
-          setState(newState);
-        }
-        onRightClick?.(newState, state);
+        setState(newState);
+        onRightClickRef.current?.(newState, state);
       };
 
     const width = 14 * SIZE * scale;
@@ -291,22 +256,21 @@ export const RubiksCube = React.forwardRef<ICubeHandle, ICubeProps>(
     return (
       <svg {...{ width, height }}>
         <g transform={`scale(${scale})`}>
-
-        {[0, 1, 2, 3, 4, 5].map((faceIndex: EFaceIndex) => {
-          return (
-            <g key={faceIndex} transform={perspective[faceIndex].transform}>
-              {renderFace({
-                state: statePropOrState,
-                faceIndex,
-                scale,
-                size: SIZE,
-                colors,
-                onLeftClick: handleLeftClickWrapper,
-                onRightClick: handleRightClickWrapper
-              })}
-            </g>
-          );
-        })}
+          {[0, 1, 2, 3, 4, 5].map((faceIndex: EFaceIndex) => {
+            return (
+              <g key={faceIndex} transform={perspective[faceIndex].transform}>
+                {renderFace({
+                  state,
+                  faceIndex,
+                  scale,
+                  size: SIZE,
+                  colors,
+                  onLeftClick: handleLeftClickWrapper,
+                  onRightClick: handleRightClickWrapper,
+                })}
+              </g>
+            );
+          })}
         </g>
       </svg>
     );

@@ -1,46 +1,40 @@
 import React from "react";
-import { base64Encode, clone } from "../utils";
+
 import {
-  allMoves,
+  deserializeCube,
+  ECubeType,
+  getCubeCharacteristicsByType,
+} from "../cube-characteristics";
+import { useLatestRef } from "../hooks";
+import {
   getAllowedMoves,
   isCubeSolved,
-  rotateByMoveName,
   TCubeState,
   TMoveNames,
 } from "../rubiks-cube";
-import { EPerspective, ICubeHandle, ICubeProps } from "./RubiksCube";
-import { Flex } from "./Flex";
+import { clone } from "../utils";
+
+import { CubeStorage } from "./CubeStorage";
 import {
-  createSolvedLatchCubeState,
-  deserializeLatchCube,
-  LatchCube,
-  latchCubeColors,
-  serializeLatchCube,
-} from "./LatchCube";
-import {
-  CubeStorage,
   ICubeStorageHandle,
   ICubeStorageProps,
-} from "./CubeStorage";
-import { TArrayCallback } from "./CubeList";
-
-export interface IStorageData {
-  perspective?: EPerspective;
-  colors?: string[];
-  state: TCubeState;
-}
+  IStorageData,
+} from "./CubeStorage.types";
+import { Flex } from "./Flex";
+import { MoveButtons } from "./MoveButtons";
+import { RubiksCube } from "./RubiksCube";
+import { EPerspective, ICubeHandle, ICubeProps } from "./RubiksCube.types";
 
 type TAllowedChildProps = ICubeProps | ICubeStorageProps;
 
 export interface ICubeControlProps {
   cubeRef?: React.RefObject<ICubeHandle>;
   permaLink?: string | null;
-  perspective?: EPerspective;
-  onMoveButtonClick?: (move: TMoveNames) => void;
-  onPermaLinkChange?: (token: string) => void;
-  onPerspectiveChange?: (perspective: EPerspective) => void;
-  handleSave?: (data: IStorageData, createNew?: boolean) => void;
+  initialPerspective?: EPerspective;
   handleLoad?: () => IStorageData | undefined;
+  handleSave?: (data: IStorageData, createNew: boolean) => void;
+  onMoveButtonClick?: (move: TMoveNames) => void;
+  onPerspectiveChange?: (perspective: EPerspective) => void;
   children?:
     | React.ReactElement<TAllowedChildProps>
     | React.ReactElement<TAllowedChildProps>[];
@@ -49,12 +43,11 @@ export interface ICubeControlProps {
 export const CubeController = ({
   cubeRef,
   permaLink,
-  perspective: perspectiveProp,
-  onPermaLinkChange,
+  initialPerspective = EPerspective.UNFOLDED,
+  handleLoad,
+  handleSave,
   onMoveButtonClick,
   onPerspectiveChange,
-  handleSave,
-  handleLoad,
   children: untypedChildren,
 }: ICubeControlProps) => {
   const children = React.Children.toArray(
@@ -62,175 +55,131 @@ export const CubeController = ({
   ) as React.ReactElement[];
 
   const Cube = children.find(
-    (child) => React.isValidElement(child) && child.type === LatchCube
+    (child) => React.isValidElement(child) && child.type === RubiksCube
   ) as React.ReactElement<ICubeProps> | undefined;
 
   const Storage = children.find(
     (child) => React.isValidElement(child) && child.type === CubeStorage
   ) as React.ReactElement<ICubeStorageProps> | undefined;
 
-  const [perspectiveState, setPerspective] = React.useState(
-    perspectiveProp ?? EPerspective.UNFOLDED
+  const [characteristic, setCharacteristic] = React.useState(
+    getCubeCharacteristicsByType(ECubeType.Latch)
   );
-  const [colors, setColors] = React.useState<string[]>(latchCubeColors);
-  const [state, setState] = React.useState(createSolvedLatchCubeState());
-  const [autoStorage, setAutoStorage] = React.useState(true);
+  const [perspective, setPerspective] = React.useState(initialPerspective);
+  const [state, setState] = React.useState(characteristic.createSolvedState());
+  const [autoStorage, setAutoStorage] = React.useState(
+    permaLink ? false : true
+  );
   const [editable, setEditable] = React.useState(true);
 
-  // allow for enabled moves to asyncronously renew when this controller
-  // does not control the cube state
-  const [enabledMoves, setEnabledMoves] = React.useState<TMoveNames[]>([]);
-
-  const cubeRefInternal = React.useRef<ICubeHandle>(null);
   const storageRef = React.useRef<ICubeStorageHandle>(null);
 
-  const perspective = perspectiveProp ?? perspectiveState;
+  const perspectiveRef = useLatestRef(perspective);
+  const autoStorageRef = useLatestRef(autoStorage);
 
-  React.useEffect(() => {
-    if (!permaLink) {
-      return
-    }
-    const data = deserializeLatchCube(permaLink)
-    if (perspectiveProp === undefined) {
-      setPerspective(data.perspective ?? EPerspective.UNFOLDED)
-    }
-      onPerspectiveChange?.(data.perspective ?? EPerspective.UNFOLDED)
-      setColors(colors => data.colors ?? colors)
-      setState(data.state)
-  }, [permaLink, onPerspectiveChange])
+  // wrap eventCallbacks in ref
+  const handleLoadRef = useLatestRef(handleLoad);
+  const handleSaveRef = useLatestRef(handleSave);
+  const onMoveButtonClickRef = useLatestRef(onMoveButtonClick);
+  const onPerspectiveChangeRef = useLatestRef(onPerspectiveChange);
 
   const onAutoStorageChange = () => setAutoStorage((toggle) => !toggle);
   const onEditableChange = () => setEditable((toggle) => !toggle);
 
-  const onSaveClickInternal = (dataParam?: IStorageData) => {
-    const createNew = dataParam ? false : true;
-    
-    const currentState = Cube ? state : cubeRef?.current?.getState();
-    if (!currentState || (!storageRef.current && !handleSave)) {
+  // convert permaLink to states
+  React.useEffect(() => {
+    if (!permaLink) {
       return;
     }
-    const newState = clone(currentState);
-    const data = dataParam || { perspective, colors, state: newState };
-    if (createNew) {
-      const permaLink = serializeLatchCube(data)
-      onPermaLinkChange?.(permaLink)
-    }
-    if (storageRef.current) {
-      storageRef.current.save(data, createNew);
-    } else if (handleSave) {
-      handleSave(data, createNew);
-    }
-  };
-
-  // asyncronously rerender to refresh enabledMoves
-  const renewEnabledMoves = React.useCallback(() => {
-    window.setTimeout(() => setEnabledMoves([]), 10);
-  }, []);
-
-  // invoke renewEnabledMoves when component mounts
-  // required when controller uses cubeRef
-  React.useEffect(() => renewEnabledMoves(), [renewEnabledMoves]);
-
-  const updateAllowedMoves = (
-    allowedMoves: TMoveNames[],
-    stateParam?: TCubeState
-  ) => {
-    const currentState =
-      stateParam || (Cube ? state : cubeRef?.current?.getState());
-
-    if (!currentState) {
-      return;
-    }
-    const canRotate = Cube
-      ? cubeRefInternal.current?.canFaceRotate
-      : cubeRef?.current?.canFaceRotate;
-    allowedMoves.splice(
-      0,
-      Infinity,
-      ...getAllowedMoves(currentState, canRotate)
+    const data = deserializeCube(permaLink);
+    setPerspective(data.perspective ?? perspectiveRef.current);
+    setState(data.state);
+    onPerspectiveChangeRef.current?.(
+      data.perspective ?? perspectiveRef.current
     );
-  };
+    setCharacteristic(getCubeCharacteristicsByType(data.type));
+    // don't make next render override selected cube
+    setAutoStorage(false);
+  }, [permaLink]);
 
-  // immediately renew allowedMoves
-  updateAllowedMoves(enabledMoves);
+  // Save / Load functions
+  const saveConfig = React.useCallback(
+    (data: IStorageData, createNew = false) => {
+      storageRef.current?.save(data, createNew);
+      handleSaveRef.current?.(data, createNew);
+    },
+    []
+  );
+
+  const loadConfig = React.useCallback(
+    (data: IStorageData) => {
+      if (Cube) {
+        setPerspective((current) => data.perspective ?? current);
+        setCharacteristic(getCubeCharacteristicsByType(data.type));
+        setState((current) => data.state ?? current);
+      }
+      onPerspectiveChangeRef.current?.(
+        data.perspective ?? perspectiveRef.current
+      );
+    },
+    [Cube]
+  );
+
+  React.useEffect(() => {
+    if (!autoStorageRef.current) {
+      return;
+    }
+    saveConfig({
+      type: characteristic.type,
+      colors: characteristic.colors,
+      perspective,
+      state,
+    });
+  }, [perspective, characteristic, state, saveConfig]);
 
   const onPerspectiveChangeInternal: React.ChangeEventHandler<
     HTMLSelectElement
   > = (e) => {
     const perspective = parseInt(e.target.value);
-    if (perspectiveProp === undefined) {
-      setPerspective(perspective);
-    }
-    onPerspectiveChange?.(perspective);
-    if (autoStorage) {
-      onSaveClickInternal({ perspective, colors, state });
-    }
+    setPerspective(perspective);
+    onPerspectiveChangeRef.current?.(perspective);
   };
 
-  const onMoveButtonClickInternal = (move: TMoveNames) => {
-    if (Cube) {
-      const canRotate = cubeRefInternal.current?.canFaceRotate;
-      setEditable(false);
-      const newState = rotateByMoveName(state, move, canRotate);
-      if (!newState) {
-        return;
-      }
-      setState(newState);
-      if (autoStorage) {
-        onSaveClickInternal({ perspective, colors, state: newState });
-      }
-    } else if (onMoveButtonClick) {
-      onMoveButtonClick(move);
-    } else {
-      cubeRef?.current?.rotateByMoveName(move);
-    }
+  const onMoveButtonClickInternal = (
+    move: TMoveNames,
+    newState: TCubeState
+  ) => {
+    setState(newState);
+    onMoveButtonClickRef.current?.(move);
   };
 
-  const onLoadClickInternal = React.useCallback(
-    (dataParam?: IStorageData) => {
-      const data = dataParam || storageRef.current?.load() || handleLoad?.();
-      if (!data) {
-        return;
-      }
-      const { colors, state: newState } = data;
-      if (Cube) {
-        if (perspectiveProp !== undefined) {
-          onPerspectiveChange?.(data.perspective ?? perspective);
-        } else {
-          setPerspective(data.perspective ?? perspective);
-        }
-        setColors((current) => colors || current);
-        setState(newState);
-      } else {
-        renewEnabledMoves();
-      }
-    },
-    [
-      Cube,
-      perspectiveProp,
-      perspective,
-      handleLoad,
-      onPerspectiveChange,
-      renewEnabledMoves,
-    ]
-  );
+  const onSaveClickInternal = () => {
+    const currentState = Cube ? state : cubeRef?.current?.getState();
+    if (!currentState) {
+      return;
+    }
+    const newState = clone(currentState);
+    const data = {
+      perspective: perspectiveRef.current,
+      type: characteristic.type,
+      colors: characteristic.colors,
+      state: newState,
+    };
+    saveConfig(data, true);
+  };
+
+  const onLoadClickInternal = () => {
+    const data = storageRef.current?.load() ?? handleLoadRef.current?.();
+    if (!data) {
+      return;
+    }
+    loadConfig(data);
+  };
 
   const onSolveClickInternal = () => {
     if (!Cube) {
       return;
     }
-    const data = { perspective, colors, state };
-    const serializedData = serializeLatchCube(data);
-    const deserializedData = deserializeLatchCube(serializedData);
-    console.log(
-      { ...data, perspective: EPerspective[data.perspective] },
-      serializedData,
-      {
-        ...deserializedData,
-        perspective:
-          EPerspective[deserializedData.perspective || EPerspective.UNFOLDED],
-      }
-    );
     if (isCubeSolved(state)) {
       console.log("solved");
     }
@@ -240,19 +189,16 @@ export const CubeController = ({
 
   const onCubeChange = React.useCallback((state: TCubeState) => {
     setState(state);
-    if (autoStorage) {
-      onSaveClickInternal({ perspective, colors, state });
-    }
-  }, [autoStorage]);
+  }, []);
 
-  const onStorageChange = React.useCallback<TArrayCallback>(
-    (item) => {
+  const onStorageChange = React.useCallback(
+    (item?: IStorageData) => {
       if (!autoStorage || !item) {
         return;
       }
-      onLoadClickInternal(item);
+      loadConfig(item);
     },
-    [autoStorage, onLoadClickInternal]
+    [autoStorage, loadConfig]
   );
 
   const renderCube = () => {
@@ -262,16 +208,21 @@ export const CubeController = ({
 
     return (
       <Flex padding="50px">
-        {React.cloneElement(Cube, {
-          ref: cubeRefInternal,
-          editable,
-          perspective,
-          colors,
-          state,
-          onChange: onCubeChange,
-          onLeftClick: onCubeChange,
-          onRightClick: onCubeChange,
-        })}
+        <RubiksCube
+          {...{
+            editable,
+            perspective,
+            colors: characteristic.colors,
+            state,
+            handleCanFaceRotate: characteristic.handleCanFaceRotate,
+            handleLeftClick: characteristic.handleLeftClick,
+            handleRightClick: characteristic.handleRightClick,
+            renderFace: characteristic.renderFace,
+            onChange: onCubeChange,
+            onLeftClick: onCubeChange,
+            onRightClick: onCubeChange,
+          }}
+        />
       </Flex>
     );
   };
@@ -295,22 +246,18 @@ export const CubeController = ({
         {renderCube()}
         <Flex row spaceAround wrap>
           <Flex grow row>
-            {Object.keys(allMoves).map((untypedMove) => {
-              const move = untypedMove as TMoveNames;
-              return (
-                <button
-                  key={move}
-                  disabled={!enabledMoves.includes(move)}
-                  onClick={() => onMoveButtonClickInternal(move)}
-                >
-                  {move}
-                </button>
-              );
-            })}
+            <MoveButtons
+              {...{
+                cubeRef,
+                state,
+                canFaceRotate: characteristic.handleCanFaceRotate,
+                onClick: onMoveButtonClickInternal,
+              }}
+            />
           </Flex>
           <Flex grow row>
-            <button onClick={() => onLoadClickInternal()}>Load</button>
-            <button onClick={() => onSaveClickInternal()}>Save</button>
+            <button onClick={onLoadClickInternal}>Load</button>
+            <button onClick={onSaveClickInternal}>Save</button>
             <button onClick={onSolveClickInternal}>Solve</button>
           </Flex>
           <Flex grow row>

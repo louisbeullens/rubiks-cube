@@ -3,12 +3,19 @@ export const clone = <T extends any>(state: T): T =>
 
 export const rad = (deg: number) => (Math.PI * deg) / 180;
 
-export const rol8 = (byte: number, bits: number) => ((byte << bits) | (byte >> (8 - bits))) & 0xff;
+export const rol8 = (byte: number, bits: number) =>
+  ((byte << bits) | (byte >> (8 - bits))) & 0xff;
 
-export const convertByteSize = (input: number[], bitsFrom: number, bitsTo: number) => {
+export const convertByteSize = (
+  input: number[],
+  bitsFrom: number,
+  bitsTo: number
+) => {
   const inputBuffer = new Uint8ClampedArray(input);
 
-  const outputBuffer = new Uint8ClampedArray(Math.ceil(input.length*bitsFrom / bitsTo));
+  const outputBuffer = new Uint8ClampedArray(
+    Math.ceil((input.length * bitsFrom) / bitsTo)
+  );
 
   let iOffset = 0;
   let iByte = inputBuffer[iOffset];
@@ -33,14 +40,23 @@ export const convertByteSize = (input: number[], bitsFrom: number, bitsTo: numbe
     bitsLeft -= bitsConsume;
     if (bitsLeft === 0) {
       iOffset++;
-      iByte = inputBuffer[iOffset]
+      iByte = inputBuffer[iOffset];
       bitsLeft = bitsFrom;
     }
   }
   return [...outputBuffer];
 };
 
-const base64Alfabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+const base64Alfabet =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 
-export const base64Encode = (data: number[]) => convertByteSize(data, 8, 6).map(el => base64Alfabet[el]).join('')
-export const base64Decode = (data: string) => convertByteSize(data.split('').map(el => base64Alfabet.indexOf(el)), 6,8)
+export const base64Encode = (data: number[]) =>
+  convertByteSize(data, 8, 6)
+    .map((el) => base64Alfabet[el])
+    .join("");
+export const base64Decode = (data: string) =>
+  convertByteSize(
+    data.split("").map((el) => base64Alfabet.indexOf(el)),
+    6,
+    8
+  );

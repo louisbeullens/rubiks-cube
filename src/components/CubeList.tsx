@@ -1,64 +1,44 @@
-import React from "react";
-import { TCubeState } from "../rubiks-cube";
-import { Flex } from "./Flex";
+import { AbstractList, IListProps, IRenderItemProps } from "./AbstractList";
+import { IStorageData } from "./CubeStorage.types";
 import { LatchCube } from "./LatchCube";
-import { EPerspective } from "./RubiksCube";
 
-export interface IListItem {
-  id: string;
-  perspective?: EPerspective;
-  colors?: string[];
-  state: TCubeState;
-}
+const size = "25px";
+const itemPosition = "relative" as const;
+const removeButtonStyle = {
+  position: "absolute" as const,
+  right: size,
+  bottom: size,
+};
 
-export type TArrayCallback = (
-  value: IListItem | undefined,
-  i: number,
-  arr: IListItem[]
-) => void;
-
-interface ICubeListProps {
-  value?: IListItem;
-  items: IListItem[];
-  onChange?: TArrayCallback;
-  onRemove?: TArrayCallback;
-}
-
-export const CubeList = ({
-  value,
-  items,
-  onChange,
+const renderItem = ({
+  item,
+  isSelected,
+  onClick,
   onRemove,
-}: ICubeListProps) => {
-  const size = "25px";
-  const position = "relative" as const;
-  const padding = size;
-  const border = "1px solid black";
-  const style = { position, border, padding };
+}: IRenderItemProps<IStorageData>) => {
+  const border = isSelected ? "2px solid blue" : "1px solid black";
+  const style = { position: itemPosition, border, padding: size };
+
+  const { perspective, colors, state } = item;
 
   return (
-    <Flex column>
-      {items.map((item, i) => {
-        const isSelectedItem = item === value;
-        const customBorder = isSelectedItem ? "2px solid blue" : border;
-        return (
-          <div key={item.id} style={{ ...style, border: customBorder }}>
-            <div
-              onClick={() =>
-                onChange?.(!isSelectedItem ? item : undefined, i, items)
-              }
-            >
-              <LatchCube editable={false} scale={0.5} {...item} />
-            </div>
-            <button
-              onClick={() => onRemove?.(items[i], i, items)}
-              style={{ position: "absolute", right: size, bottom: size }}
-            >
-              -
-            </button>
-          </div>
-        );
-      })}
-    </Flex>
+    <div {...{ style }}>
+      <div {...{ onClick }}>
+        <LatchCube scale={0.5} {...{ perspective, colors, state }} />
+      </div>
+      <button style={removeButtonStyle} onClick={onRemove}>
+        -
+      </button>
+    </div>
   );
+};
+
+export const CubeList = ({
+  items,
+  value,
+  onChange,
+  onRemove,
+}: IListProps<IStorageData>) => {
+  const List = AbstractList<IStorageData>;
+  return <List {...{ renderItem, items, value, onChange, onRemove }} />;
 };
