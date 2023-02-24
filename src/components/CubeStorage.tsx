@@ -1,11 +1,14 @@
 import React from "react";
 import {
-  ECubeType,
   getAllCubeCharacteristics,
-  getCubeCharacteristicsByType,
   ICubeCharacteristic,
 } from "../cube-characteristics";
-import { createNewItem, persistItem, retrieveItems } from "../storage-utils";
+import {
+  createNewItem,
+  persistItem,
+  removeItem,
+  retrieveItems,
+} from "../storage-utils";
 import { IListItem, IListProps } from "./AbstractList";
 import { CubeList } from "./CubeList";
 import {
@@ -41,15 +44,17 @@ export const CubeStorage = React.forwardRef<
 
   const onInsert = (characteristic: ICubeCharacteristic) => {
     const item = createNewItem(characteristic);
-    persistItem(item);
-    const newItems = [...items, item];
+    const id = Date.now().toString();
+    const listItem = { id, ...item };
+    persistItem(id, item);
+    const newItems = [...items, listItem];
     setItems(newItems);
-    setSelectedItem(item);
+    setSelectedItem(listItem);
     onChange?.(item);
   };
 
   const onRemove: IListProps<IStorageData>["onRemove"] = (item, i) => {
-    window.localStorage.removeItem(`cube-${item.id}`);
+    removeItem(item.id);
     if (item === selectedItem) {
       setSelectedItem(undefined);
     }
@@ -58,22 +63,22 @@ export const CubeStorage = React.forwardRef<
 
   const handleSave = React.useCallback(
     (data: IStorageData, createNew: boolean = false) => {
-      const item =
-        selectedItem ||
-        (createNew &&
-          createNewItem(getCubeCharacteristicsByType(ECubeType.Latch)));
-      if (!item) {
+      let listItem: IListItem<IStorageData> | undefined = selectedItem;
+      if (!listItem && createNew) {
+        listItem = { id: Date.now().toString(), ...data };
+      }
+      if (!listItem) {
         return;
       }
       if (!selectedItem) {
-        setItems((items) => [...items, item]);
-        setSelectedItem(item);
+        setSelectedItem(listItem);
+        setItems((items) => [...items, listItem!]);
       }
-      item.perspective = data.perspective;
-      item.colors = data.colors || item.colors;
-      item.state = data.state;
-      persistItem(item);
-      setItems((items) => [...items]);
+      listItem.perspective = data.perspective;
+      listItem.colors = data.colors;
+      listItem.state = data.state;
+      persistItem(listItem.id, listItem);
+      setItems((listItems) => [...listItems]);
     },
     [selectedItem]
   );
