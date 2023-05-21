@@ -7,7 +7,6 @@ import {
   operate,
 } from "../rubiks-cube/operation-util";
 import { TCubeState } from "../rubiks-cube/types";
-import { Flex } from "./Flex";
 
 interface IMoveButtonsProps {
   state: TCubeState;
