@@ -12,7 +12,6 @@ import {
 import { IListItem, IListProps } from "./AbstractList";
 import { CubeList } from "./CubeList";
 import {
-  CONTAINER_WIDTH,
   ICubeStorageHandle,
   ICubeStorageProps,
   IStorageData,
@@ -74,8 +73,8 @@ export const CubeStorage = React.forwardRef<
         setSelectedItem(listItem);
         setItems((items) => [...items, listItem!]);
       }
+      listItem.type = data.type;
       listItem.perspective = data.perspective;
-      listItem.colors = data.colors;
       listItem.state = data.state;
       persistItem(listItem.id, listItem);
       setItems((listItems) => [...listItems]);
@@ -99,16 +98,28 @@ export const CubeStorage = React.forwardRef<
   const allCubes = getAllCubeCharacteristics();
 
   return (
-    <>
-      <div
-        style={{
-          width: CONTAINER_WIDTH,
-          boxSizing: "border-box",
-          maxHeight: "100vh",
-          overflowX: "hidden",
-        }}
-      >
-        <Flex column>
+    <Flex grow column>
+      <Flex row>
+        {allCubes
+          .filter(({ hidden }) => !hidden)
+          .map((characteristic) => (
+            <Flex grow column>
+              <button
+                key={characteristic.type}
+                onClick={() => onInsert(characteristic)}
+              >{`Add ${characteristic.name}`}</button>
+            </Flex>
+          ))}
+      </Flex>
+      <Flex row spaceAround>
+        <div
+          style={{
+            maxWidth: "98vw",
+            boxSizing: "border-box",
+            overflowX: "scroll",
+            scrollbarGutter: "stable",
+          }}
+        >
           <CubeList
             value={selectedItem}
             {...{
@@ -117,25 +128,8 @@ export const CubeStorage = React.forwardRef<
               onRemove,
             }}
           />
-          <div
-            style={{
-              position: "sticky",
-              right: "0px",
-              bottom: "0px",
-            }}
-          >
-            <Flex row>
-              {allCubes.map((characteristic) => (
-                <Flex key={characteristic.type} grow column>
-                  <button
-                    onClick={() => onInsert(characteristic)}
-                  >{`Add ${characteristic.name}`}</button>
-                </Flex>
-              ))}
-            </Flex>
-          </div>
-        </Flex>
-      </div>
-    </>
+        </div>
+      </Flex>
+    </Flex>
   );
 });

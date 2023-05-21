@@ -1,6 +1,8 @@
 export const clone = <T extends any>(state: T): T =>
   JSON.parse(JSON.stringify(state));
 
+export const mod4 = (a: number, b: number) => (a + b) % 4;
+
 export const rad = (deg: number) => (Math.PI * deg) / 180;
 
 export const rol8 = (byte: number, bits: number) =>
@@ -8,14 +10,22 @@ export const rol8 = (byte: number, bits: number) =>
 
 export const convertByteSize = (
   input: number[],
-  bitsFrom: number,
-  bitsTo: number
+  inputWordSizeParam: number | number[],
+  outputWordSizeParam: number | number[]
 ) => {
-  const inputBuffer = new Uint8ClampedArray(input);
+  const inputWordSizes = Array.isArray(inputWordSizeParam)
+    ? [...inputWordSizeParam]
+    : Array.from({ length: input.length }, () => inputWordSizeParam);
 
-  const outputBuffer = new Uint8ClampedArray(
-    Math.ceil((input.length * bitsFrom) / bitsTo)
-  );
+  const outputWordSizes = Array.isArray(outputWordSizeParam)
+    ? [...outputWordSizeParam]
+    : Array.from({ length: input.length * 8 }, () => outputWordSizeParam);
+
+  const inputBuffer = new Uint8ClampedArray(input);
+  const outputBuffer: number[] = [];
+
+  let bitsFrom = inputWordSizes.shift()!;
+  let bitsTo = outputWordSizes.shift()!;
 
   let iOffset = 0;
   let iByte = inputBuffer[iOffset];
@@ -35,16 +45,16 @@ export const convertByteSize = (
     bitsFree -= bitsConsume;
     if (bitsFree === 0) {
       o++;
-      bitsFree = bitsTo;
+      bitsFree = outputWordSizes.shift()!;
     }
     bitsLeft -= bitsConsume;
     if (bitsLeft === 0) {
       iOffset++;
       iByte = inputBuffer[iOffset];
-      bitsLeft = bitsFrom;
+      bitsLeft = inputWordSizes.shift()!;
     }
   }
-  return [...outputBuffer];
+  return outputBuffer;
 };
 
 const base64Alfabet =
@@ -54,6 +64,7 @@ export const base64Encode = (data: number[]) =>
   convertByteSize(data, 8, 6)
     .map((el) => base64Alfabet[el])
     .join("");
+
 export const base64Decode = (data: string) =>
   convertByteSize(
     data.split("").map((el) => base64Alfabet.indexOf(el)),

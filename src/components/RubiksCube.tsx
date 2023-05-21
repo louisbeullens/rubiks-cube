@@ -1,276 +1,231 @@
 import React from "react";
-import { ECubeType, ICubeCharacteristic } from "../cube-characteristics";
+import { ICubeCharacteristic } from "../cube-characteristics";
 import { useLatestRef, usePropOverState } from "../hooks";
+import defaultTexture from "../images/rubiks-cube.png";
+import coordinates from "../rubiks-cube/coordinates";
 import {
-  canRotateByMoveName,
-  COLOR_MASK,
-  createSolvedState,
-  EFaceIndex,
-  point2DToIndex,
-  rotateByMoveName,
-  TCubeState,
-} from "../rubiks-cube";
-import { clone } from "../utils";
-import {
-  EPerspective,
-  ICubeHandle,
-  ICubeProps,
-  THandleClick,
-  TRenderFace,
-} from "./RubiksCube.types";
+  defaultState,
+  getCorePermutation,
+  stateToCube,
+} from "../rubiks-cube/cube-util";
+import fundamentalOperations from "../rubiks-cube/fundamentalOperations";
+import { createOperationMap } from "../rubiks-cube/operation-util";
+import { coreOrientationMap } from "../rubiks-cube/rotationMap";
+import { faceNames, uvToPoint3D } from "../rubiks-cube/spatial-util";
+import { TCubeState } from "../rubiks-cube/types";
+import { mod4 } from "../utils";
+import { Face, FACE_SIZE, STICKER_SIZE } from "./Face";
+import { ECubeType, EPerspective } from "./RubiksCube.types";
 
-const SIZE = 50;
+const { SQRT1_2, SQRT2 } = Math;
 
-const rubiksCubeColors = ["white", "green", "red", "blue", "orange", "yellow"];
+const PADDING_LEFT =
+  (14 * STICKER_SIZE - (2 * FACE_SIZE * SQRT2 + STICKER_SIZE)) / 2;
 
-const defaultHandleLeftClick: THandleClick = (state, faceIndex, x, y) => {
-  const newState = clone(state);
-  const i = point2DToIndex(x, y);
-  const currentColorIndex = newState[faceIndex][i] & COLOR_MASK;
-  const newColorIndex = (currentColorIndex + 1) % rubiksCubeColors.length;
-  newState[faceIndex][i] =
-    (newState[faceIndex][i] & ~COLOR_MASK) | newColorIndex;
-  return newState;
-};
+const PADDING_TOP =
+  (11 * STICKER_SIZE - (FACE_SIZE * SQRT2 + FACE_SIZE * SQRT1_2)) / 2;
 
-export const defaultRenderFace: TRenderFace = ({
-  state,
-  faceIndex,
-  scale,
-  size,
-  colors,
-  onLeftClick,
-  onRightClick,
-}) => {
-  const faceColors = state[faceIndex].map((el) => el & COLOR_MASK);
-
-  const elements: JSX.Element[] = [];
-  for (let y = -1; y <= 1; y++) {
-    for (let x = -1; x <= 1; x++) {
-      const i = point2DToIndex(x, y);
-      elements.push(
-        <rect
-          key={i}
-          x={(x - 0.5) * size}
-          y={(y - 0.5) * size}
-          width={size}
-          height={size}
-          stroke="black"
-          fill={colors[faceColors[i]]}
-          onClick={onLeftClick?.(state, faceIndex, x, y)}
-          onContextMenuCapture={onRightClick?.(state, faceIndex, x, y)}
-          strokeWidth={1 / scale}
-        />
-      );
-    }
-  }
-  return elements;
-};
-
-export const rubiksCubeCharacteristics: ICubeCharacteristic = {
-  name: "Rubik's Cube",
-  type: ECubeType.Rubiks,
-  significantBits: 3,
-  colors: rubiksCubeColors,
-  createSolvedState,
-};
-
-const perspectives = {
+const perspectives: Record<number, Record<number, string>> = {
   [EPerspective.UNFOLDED]: {
-    [EFaceIndex["y+"]]: {
-      transform: `translate(${4.5 * SIZE} ${1.5 * SIZE}) scale(1 1)`,
-      textTransform: ``,
-    },
-    [EFaceIndex["x-"]]: {
-      transform: `translate(${1.5 * SIZE} ${4.5 * SIZE}) scale(1 -1)`,
-      textTransform: ``,
-    },
-    [EFaceIndex["z+"]]: {
-      transform: `translate(${4.5 * SIZE} ${4.5 * SIZE}) scale(1 -1)`,
-      textTransform: ``,
-    },
-    [EFaceIndex["x+"]]: {
-      transform: `translate(${7.5 * SIZE} ${4.5 * SIZE}) scale(-1 -1)`,
-      textTransform: ``,
-    },
-    [EFaceIndex["z-"]]: {
-      transform: `translate(${10.5 * SIZE} ${4.5 * SIZE}) scale(-1 -1)`,
-      textTransform: ``,
-    },
-    [EFaceIndex["y-"]]: {
-      transform: `translate(${4.5 * SIZE} ${7.5 * SIZE}) scale(1 -1)`,
-      textTransform: ``,
-    },
+    [faceNames.U]: `translate(${FACE_SIZE + STICKER_SIZE} ${STICKER_SIZE})`,
+    [faceNames.L]: `translate(${STICKER_SIZE} ${FACE_SIZE + STICKER_SIZE})`,
+    [faceNames.F]: `translate(${FACE_SIZE + STICKER_SIZE} ${
+      FACE_SIZE + STICKER_SIZE
+    })`,
+    [faceNames.R]: `translate(${2 * FACE_SIZE + STICKER_SIZE} ${
+      FACE_SIZE + STICKER_SIZE
+    })`,
+    [faceNames.B]: `translate(${3 * FACE_SIZE + STICKER_SIZE} ${
+      FACE_SIZE + STICKER_SIZE
+    })`,
+    [faceNames.D]: `translate(${FACE_SIZE + STICKER_SIZE} ${
+      2 * FACE_SIZE + STICKER_SIZE
+    })`,
   },
   [EPerspective.ISOMETRIC]: {
-    [EFaceIndex["y+"]]: {
-      transform: `translate(${3 * SIZE} ${3 * SIZE}) rotate(45) scale(${
-        Math.SQRT2
-      } ${Math.SQRT2})`,
-      textTransform: ``,
-    },
-    [EFaceIndex["x-"]]: {
-      transform: `translate(${9 * SIZE} ${3 * SIZE}) skewY(-45) scale(-1 -1)`,
-      textTransform: ``,
-    },
-    [EFaceIndex["z+"]]: {
-      transform: `translate(${1.5 * SIZE} ${6 * SIZE}) skewY(45) scale(1 -1)`,
-      textTransform: ``,
-    },
-    [EFaceIndex["x+"]]: {
-      transform: `translate(${4.5 * SIZE} ${6 * SIZE}) skewY(-45) scale(-1 -1)`,
-      textTransform: ``,
-    },
-    [EFaceIndex["z-"]]: {
-      transform: `translate(${12 * SIZE} ${3 * SIZE}) skewY(45) scale(1 -1)`,
-      textTransform: ``,
-    },
-    [EFaceIndex["y-"]]: {
-      transform: `translate(${10.5 * SIZE} ${6 * SIZE}) rotate(45) scale(${
-        Math.SQRT2
-      } ${Math.SQRT2})`,
-      textTransform: ``,
-    },
+    // U
+    [faceNames.U]: `translate(${PADDING_LEFT} ${PADDING_TOP}) scale(${SQRT1_2}) translate(${FACE_SIZE} ${FACE_SIZE}) scale(${SQRT2}) rotate(45) translate(${
+      -FACE_SIZE / 2
+    } ${-FACE_SIZE / 2})`,
+    // L
+    [faceNames.L]: `translate(${PADDING_LEFT} ${PADDING_TOP}) translate(${
+      FACE_SIZE * SQRT2 + STICKER_SIZE
+    }) scale(${-SQRT1_2} ${SQRT1_2}) translate(${-FACE_SIZE}) skewY(45)`,
+    // F
+    [faceNames.F]: `translate(${PADDING_LEFT} ${PADDING_TOP}) scale(${SQRT1_2}) skewY(45) translate(0 ${FACE_SIZE})`,
+    // R
+    [faceNames.R]: `translate(${PADDING_LEFT} ${PADDING_TOP}) scale(${SQRT1_2}) skewY(-45) translate(${FACE_SIZE} ${
+      FACE_SIZE * 3
+    })`,
+    // B
+    [faceNames.B]: `translate(${PADDING_LEFT} ${PADDING_TOP}) translate(${
+      FACE_SIZE * SQRT2 + STICKER_SIZE
+    }) scale(${-SQRT1_2} ${SQRT1_2}) translate(${
+      -FACE_SIZE * 2
+    } ${FACE_SIZE}) skewY(-45)`,
+    // D
+    [faceNames.D]: `translate(${PADDING_LEFT} ${PADDING_TOP}) translate(${
+      FACE_SIZE * SQRT2 + STICKER_SIZE
+    }) scale(${SQRT1_2}) translate(${FACE_SIZE} ${
+      FACE_SIZE * 2
+    }) scale(${SQRT2} ${-SQRT2}) rotate(-45) translate(${-FACE_SIZE / 2} ${
+      -FACE_SIZE / 2
+    })`,
   },
 };
 
-export const RubiksCube = React.forwardRef<ICubeHandle, ICubeProps>(
-  (
-    {
-      scale = 1,
-      editable = true,
-      colors = rubiksCubeColors,
-      perspective: perspectiveType,
-      state: stateProp,
-      initialState,
-      renderFace: renderFaceProp,
-      handleCanFaceRotate,
-      handleLeftClick,
-      handleRightClick,
-      onChange,
-      onLeftClick,
-      onRightClick,
-    },
-    forwardedRef
-  ) => {
-    perspectiveType = perspectiveType ?? EPerspective.UNFOLDED;
-    const renderFace = renderFaceProp ?? defaultRenderFace;
-    handleLeftClick = handleLeftClick ?? defaultHandleLeftClick;
+const operations = createOperationMap(fundamentalOperations);
 
-    const [state, setState] = usePropOverState(
-      initialState ?? createSolvedState(),
-      stateProp
-    );
-
-    const handleCanFaceRotateRef = useLatestRef(handleCanFaceRotate);
-    const handleLeftClickRef = useLatestRef(handleLeftClick);
-    const handleRightClickRef = useLatestRef(handleRightClick);
-    const onChangeRef = useLatestRef(onChange);
-    const onLeftClickRef = useLatestRef(onLeftClick);
-    const onRightClickRef = useLatestRef(onRightClick);
-
-    const perspective = perspectives[perspectiveType];
-
-    const canRotateCubeByMoveName = React.useCallback<
-      ICubeHandle["canRotateByMoveName"]
-    >(
-      (move) =>
-        canRotateByMoveName(state, move, handleCanFaceRotateRef.current),
-      [state]
-    );
-
-    const rotateCubeByMoveName = React.useCallback<
-      ICubeHandle["rotateByMoveName"]
-    >(
-      (move) => {
-        const newState = rotateByMoveName(
-          state,
-          move,
-          handleCanFaceRotateRef.current
-        );
-        if (!newState) {
-          return undefined;
-        }
-        setState(newState);
-        onChangeRef.current?.(newState, state);
-        return newState;
-      },
-      [state, setState]
-    );
-
-    const getState = React.useCallback<ICubeHandle["getState"]>(
-      () => state,
-      [state]
-    );
-
-    React.useImperativeHandle(
-      forwardedRef,
-      () => ({
-        canFaceRotate: handleCanFaceRotate,
-        canRotateByMoveName: canRotateCubeByMoveName,
-        rotateByMoveName: rotateCubeByMoveName,
-        getState,
-      }),
-      [
-        canRotateCubeByMoveName,
-        rotateCubeByMoveName,
-        getState,
-        handleCanFaceRotate,
-      ]
-    );
-
-    const handleLeftClickWrapper =
-      (state: TCubeState, faceIndex: EFaceIndex, x: number, y: number) =>
-      () => {
-        if (!editable) {
-          return;
-        }
-        const newState = handleLeftClickRef.current(state, faceIndex, x, y);
-        if (!newState) {
-          return;
-        }
-        setState(newState);
-        onLeftClickRef.current?.(newState, state);
-      };
-
-    const handleRightClickWrapper =
-      (state: TCubeState, faceIndex: EFaceIndex, x: number, y: number) =>
-      (e: React.MouseEvent) => {
-        if (!editable) {
-          return;
-        }
-        e.preventDefault();
-        const newState = handleRightClickRef.current?.(state, faceIndex, x, y);
-        if (!newState) {
-          return;
-        }
-        setState(newState);
-        onRightClickRef.current?.(newState, state);
-      };
-
-    const width = 14 * SIZE * scale;
-    const height = 9 * SIZE * scale;
-
-    return (
-      <svg {...{ width, height }}>
-        <g transform={`scale(${scale})`}>
-          {[0, 1, 2, 3, 4, 5].map((faceIndex: EFaceIndex) => {
-            return (
-              <g key={faceIndex} transform={perspective[faceIndex].transform}>
-                {renderFace({
-                  state,
-                  faceIndex,
-                  scale,
-                  size: SIZE,
-                  colors,
-                  onLeftClick: handleLeftClickWrapper,
-                  onRightClick: handleRightClickWrapper,
-                })}
-              </g>
-            );
-          })}
-        </g>
-      </svg>
-    );
+function normalizeCenter(el: number) {
+  switch (el % 9) {
+    case 2:
+      return el - 52;
+    case 1:
+      return el - 51;
+    case 0:
+      return el - 50;
+    default:
+      return el;
   }
-);
+}
+
+function getCenterRotation(el: number) {
+  switch (el % 9) {
+    case 2:
+      return 3;
+    case 1:
+      return 2;
+    case 0:
+      return 1;
+    default:
+      return 0;
+  }
+}
+
+function normailzeFace(face: number[]) {
+  return face.map((el, i) => {
+    return i === 4 ? normalizeCenter(el) : el;
+  });
+}
+
+export function getRubiksCubeMovesAllowed(state: TCubeState) {
+  const result: Record<string, boolean> = {};
+
+  Object.keys(operations)
+    .filter((move) => move.length <= 2 && !["M", "E", "S"].includes(move[0]))
+    .sort()
+    .forEach((move) => {
+      result[move] = true;
+    });
+
+  return result;
+}
+
+export const rubiksCharacteristic: ICubeCharacteristic = {
+  name: "Rubik's Cube",
+  type: ECubeType.Rubiks,
+  texture: defaultTexture,
+  getMovesAllowed: getRubiksCubeMovesAllowed,
+};
+
+export interface ICubeProps {
+  cubeState?: TCubeState;
+  texture?: string;
+  perspective?: EPerspective;
+  scale?: number;
+  onChange?: (cubeState: TCubeState) => void;
+}
+
+export const RubiksCube: React.FC<ICubeProps> = ({
+  cubeState: cubeStateProp,
+  texture = defaultTexture,
+  perspective: perspectiveType = EPerspective.UNFOLDED,
+  scale = 0.5,
+  onChange,
+}) => {
+  const [cubeState, setCubeState] = usePropOverState(
+    defaultState,
+    cubeStateProp
+  );
+
+  const onChangeRef = useLatestRef(onChange);
+
+  const cube = stateToCube(cubeState);
+
+  const onLeftClick = React.useCallback(
+    (faceIndex: number, u: number, v: number) => {
+      if (u === 0 && v === 0) {
+        return;
+      }
+
+      const point = uvToPoint3D(faceIndex, u, v);
+      const i = coordinates.findIndex(
+        ({ x, y, z }) => x === point.x && y === point.y && z === point.z
+      );
+
+      const newState = [...cubeState];
+      newState[i] =
+        i < 12 ? (newState[i] % 24) + 2 : ((newState[i] - 36) % 24) + 39;
+
+      onChangeRef.current?.(newState);
+      setCubeState(newState);
+    },
+    [cubeState, setCubeState]
+  );
+
+  const onRightClick = React.useCallback(
+    (faceIndex: number, u: number, v: number) => {
+      const point = uvToPoint3D(faceIndex, u, v);
+      let i = coordinates.findIndex(
+        ({ x, y, z }) => x === point.x && y === point.y && z === point.z
+      );
+      i = i === -1 ? 20 + faceIndex : i;
+
+      const modulus = i < 12 ? 2 : i < 20 ? 3 : 4;
+      const newState = [...cubeState];
+
+      const base = Math.floor(newState[i] / modulus);
+      const orientation = newState[i] % modulus;
+
+      newState[i] = modulus * base + ((orientation + 1) % modulus);
+
+      onChangeRef.current?.(newState);
+      setCubeState(newState);
+    },
+    [cubeState, setCubeState]
+  );
+
+  const perspective = perspectives[perspectiveType];
+
+  const corePermutation = getCorePermutation(cubeState);
+
+  const coreOrientation = (coreOrientationMap as Record<string, number[]>)[
+    corePermutation
+  ];
+
+  const faceElements: JSX.Element[] = [];
+
+  cube.forEach((face, faceIndex) => {
+    faceElements.push(
+      <g key={faceIndex} transform={perspective[faceIndex]}>
+        <Face
+          faceIndex={faceIndex}
+          face={normailzeFace(face)}
+          texturePath={texture}
+          centerRotation={mod4(
+            coreOrientation[faceIndex],
+            getCenterRotation(face[4])
+          )}
+          onLeftClick={onLeftClick}
+          onRightClick={onRightClick}
+        />
+      </g>
+    );
+  });
+
+  return (
+    <svg width={14 * STICKER_SIZE * scale} height={11 * STICKER_SIZE * scale}>
+      <g transform={`scale(${scale})`}>{faceElements}</g>
+    </svg>
+  );
+};

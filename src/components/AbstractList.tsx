@@ -47,7 +47,7 @@ export const AbstractList = <T extends {}>({
   renderItem = defaultRenderItem,
 }: IListProps<T>) => {
   return (
-    <Flex column>
+    <Flex row>
       {items.map((item, i, arr) => {
         const isSelected = item === value;
         return (

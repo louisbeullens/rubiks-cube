@@ -1,16 +1,9 @@
 import React from "react";
-import {
-  deserializeCube,
-  ECubeType,
-  getCubeCharacteristicsByType,
-} from "../cube-characteristics";
+import { getCubeCharacteristicsByType } from "../cube-characteristics";
 import { useLatestRef } from "../hooks";
-import {
-  getAllowedMoves,
-  isCubeSolved,
-  TCubeState,
-  TMoveNames,
-} from "../rubiks-cube";
+import { defaultState } from "../rubiks-cube/cube-util";
+import { TCubeState } from "../rubiks-cube/types";
+import { deserializeCube } from "../storage-utils";
 import { clone } from "../utils";
 import { CubeStorage } from "./CubeStorage";
 import {
@@ -21,31 +14,19 @@ import {
 import { Flex } from "./Flex";
 import { MoveButtons } from "./MoveButtons";
 import { RubiksCube } from "./RubiksCube";
-import { EPerspective, ICubeHandle, ICubeProps } from "./RubiksCube.types";
-
-type TAllowedChildProps = ICubeProps | ICubeStorageProps;
+import { ECubeType, EPerspective } from "./RubiksCube.types";
 
 export interface ICubeControlProps {
-  cubeRef?: React.RefObject<ICubeHandle>;
   permaLink?: string | null;
   initialPerspective?: EPerspective;
-  handleLoad?: () => IStorageData | undefined;
-  handleSave?: (data: IStorageData, createNew: boolean) => void;
-  onMoveButtonClick?: (move: TMoveNames) => void;
-  onPerspectiveChange?: (perspective: EPerspective) => void;
-  children?:
-    | React.ReactElement<TAllowedChildProps>
-    | React.ReactElement<TAllowedChildProps>[];
+  onSaveClick?: (data: IStorageData) => void;
+  children?: React.ReactElement | React.ReactElement[];
 }
 
 export const CubeController = ({
-  cubeRef,
   permaLink,
   initialPerspective = EPerspective.UNFOLDED,
-  handleLoad,
-  handleSave,
-  onMoveButtonClick,
-  onPerspectiveChange,
+  onSaveClick,
   children: untypedChildren,
 }: ICubeControlProps) => {
   const children = React.Children.toArray(
@@ -54,7 +35,7 @@ export const CubeController = ({
 
   const Cube = children.find(
     (child) => React.isValidElement(child) && child.type === RubiksCube
-  ) as React.ReactElement<ICubeProps> | undefined;
+  ) as React.ReactElement<{}> | undefined;
 
   const Storage = children.find(
     (child) => React.isValidElement(child) && child.type === CubeStorage
@@ -64,7 +45,7 @@ export const CubeController = ({
     getCubeCharacteristicsByType(ECubeType.Latch)
   );
   const [perspective, setPerspective] = React.useState(initialPerspective);
-  const [state, setState] = React.useState(characteristic.createSolvedState());
+  const [state, setState] = React.useState(defaultState);
   const [autoStorage, setAutoStorage] = React.useState(
     permaLink ? false : true
   );
@@ -74,12 +55,10 @@ export const CubeController = ({
 
   const perspectiveRef = useLatestRef(perspective);
   const autoStorageRef = useLatestRef(autoStorage);
+  const editableRef = useLatestRef(editable);
 
   // wrap eventCallbacks in ref
-  const handleLoadRef = useLatestRef(handleLoad);
-  const handleSaveRef = useLatestRef(handleSave);
-  const onMoveButtonClickRef = useLatestRef(onMoveButtonClick);
-  const onPerspectiveChangeRef = useLatestRef(onPerspectiveChange);
+  const onSaveClickRef = useLatestRef(onSaveClick);
 
   const onAutoStorageChange = () => setAutoStorage((toggle) => !toggle);
   const onEditableChange = () => setEditable((toggle) => !toggle);
@@ -92,9 +71,7 @@ export const CubeController = ({
     const data = deserializeCube(permaLink);
     setPerspective(data.perspective ?? perspectiveRef.current);
     setState(data.state);
-    onPerspectiveChangeRef.current?.(
-      data.perspective ?? perspectiveRef.current
-    );
+
     setCharacteristic(getCubeCharacteristicsByType(data.type));
     // don't make next render override selected cube
     setAutoStorage(false);
@@ -104,24 +81,15 @@ export const CubeController = ({
   const saveConfig = React.useCallback(
     (data: IStorageData, createNew = false) => {
       storageRef.current?.save(data, createNew);
-      handleSaveRef.current?.(data, createNew);
     },
     []
   );
 
-  const loadConfig = React.useCallback(
-    (data: IStorageData) => {
-      if (Cube) {
-        setPerspective((current) => data.perspective ?? current);
-        setCharacteristic(getCubeCharacteristicsByType(data.type));
-        setState((current) => data.state ?? current);
-      }
-      onPerspectiveChangeRef.current?.(
-        data.perspective ?? perspectiveRef.current
-      );
-    },
-    [Cube]
-  );
+  const loadConfig = React.useCallback((data: IStorageData) => {
+    setPerspective((current) => data.perspective ?? current);
+    setCharacteristic(getCubeCharacteristicsByType(data.type));
+    setState((current) => data.state ?? current);
+  }, []);
 
   React.useEffect(() => {
     if (!autoStorageRef.current) {
@@ -129,74 +97,57 @@ export const CubeController = ({
     }
     saveConfig({
       type: characteristic.type,
-      colors: characteristic.colors,
       perspective,
       state,
     });
   }, [perspective, characteristic, state, saveConfig]);
 
-  const onPerspectiveChangeInternal: React.ChangeEventHandler<
-    HTMLSelectElement
-  > = (e) => {
+  const onPerspectiveChange: React.ChangeEventHandler<HTMLSelectElement> = (
+    e
+  ) => {
     const perspective = parseInt(e.target.value);
     setPerspective(perspective);
-    onPerspectiveChangeRef.current?.(perspective);
-  };
-
-  const onMoveButtonClickInternal = (
-    move: TMoveNames,
-    newState: TCubeState
-  ) => {
-    setState(newState);
-    onMoveButtonClickRef.current?.(move);
   };
 
   const onSaveClickInternal = () => {
-    const currentState = Cube ? state : cubeRef?.current?.getState();
-    if (!currentState) {
-      return;
-    }
-    const newState = clone(currentState);
+    const newState = clone(state);
     const data = {
       perspective: perspectiveRef.current,
       type: characteristic.type,
-      colors: characteristic.colors,
       state: newState,
     };
     saveConfig(data, true);
+    onSaveClickRef.current?.(data);
   };
 
   const onLoadClickInternal = () => {
-    const data = storageRef.current?.load() ?? handleLoadRef.current?.();
+    const data = storageRef.current?.load();
     if (!data) {
       return;
     }
     loadConfig(data);
   };
 
-  const onSolveClickInternal = () => {
-    if (!Cube) {
+  const onCubeChange = (state: TCubeState) => {
+    if (!editableRef.current) {
       return;
     }
-    if (isCubeSolved(state)) {
-      console.log("solved");
-    }
-    const allowedMoves = getAllowedMoves(state);
-    console.log("allowedMoves", allowedMoves);
+
+    setState(state);
   };
 
-  const onCubeChange = React.useCallback((state: TCubeState) => {
-    setState(state);
-  }, []);
+  // const onSolveClickInternal = () => {
+  //
+  // };
 
   const onStorageChange = React.useCallback(
     (item?: IStorageData) => {
-      if (!autoStorage || !item) {
+      if (!autoStorageRef.current || !item) {
         return;
       }
       loadConfig(item);
     },
-    [autoStorage, loadConfig]
+    [loadConfig]
   );
 
   const renderCube = () => {
@@ -205,23 +156,12 @@ export const CubeController = ({
     }
 
     return (
-      <Flex padding="50px">
-        <RubiksCube
-          {...{
-            editable,
-            perspective,
-            colors: characteristic.colors,
-            state,
-            handleCanFaceRotate: characteristic.handleCanFaceRotate,
-            handleLeftClick: characteristic.handleLeftClick,
-            handleRightClick: characteristic.handleRightClick,
-            renderFace: characteristic.renderFace,
-            onChange: onCubeChange,
-            onLeftClick: onCubeChange,
-            onRightClick: onCubeChange,
-          }}
-        />
-      </Flex>
+      <RubiksCube
+        cubeState={state}
+        texture={characteristic.texture}
+        perspective={perspective}
+        onChange={onCubeChange}
+      />
     );
   };
 
@@ -238,56 +178,54 @@ export const CubeController = ({
   const inputStyle = React.useMemo(() => ({ margin: "0 1em" }), []);
 
   return (
-    <>
-      {renderStorage(0)}
-      <Flex grow column>
+    <Flex grow column spaceBetween padding="0 1vw">
+      <Flex row spaceAround>
         {renderCube()}
-        <Flex row spaceAround wrap>
-          <Flex grow row>
-            <MoveButtons
-              {...{
-                cubeRef,
-                state,
-                canFaceRotate: characteristic.handleCanFaceRotate,
-                onClick: onMoveButtonClickInternal,
-              }}
-            />
-          </Flex>
-          <Flex grow row>
-            <button onClick={onLoadClickInternal}>Load</button>
-            <button onClick={onSaveClickInternal}>Save</button>
-            <button onClick={onSolveClickInternal}>Solve</button>
-          </Flex>
-          <Flex grow row>
-            Perspective
-            <select
-              onChange={onPerspectiveChangeInternal}
-              value={perspective}
-              style={inputStyle}
-            >
-              <option value={EPerspective.UNFOLDED}>unfold</option>
-              <option value={EPerspective.ISOMETRIC}>isometric</option>
-            </select>
-          </Flex>
-          <Flex grow row>
-            <input
-              type="checkbox"
-              checked={autoStorage}
-              onChange={onAutoStorageChange}
-              style={inputStyle}
-            />
-            Auto load / Auto save
-            <input
-              type="checkbox"
-              checked={editable}
-              onChange={onEditableChange}
-              style={inputStyle}
-            />
-            Editable
-          </Flex>
+      </Flex>
+      <Flex row wrap spaceAround>
+        <Flex row wrap>
+          <MoveButtons
+            state={state}
+            onClick={setState}
+            getMovesAllowed={characteristic.getMovesAllowed}
+          />
+        </Flex>
+        <Flex row>
+          <button onClick={onLoadClickInternal}>Load</button>
+          <button onClick={onSaveClickInternal}>Save</button>
+          {/* <button onClick={onSolveClickInternal}>Solve</button> */}
+        </Flex>
+        <Flex row>
+          Perspective
+          <select
+            onChange={onPerspectiveChange}
+            value={perspective}
+            style={inputStyle}
+          >
+            <option value={EPerspective.UNFOLDED}>unfold</option>
+            <option value={EPerspective.ISOMETRIC}>isometric</option>
+          </select>
+        </Flex>
+        <Flex row>
+          <input
+            type="checkbox"
+            checked={autoStorage}
+            onChange={onAutoStorageChange}
+            style={inputStyle}
+          />
+          Auto load / Auto save
+          <input
+            type="checkbox"
+            checked={editable}
+            onChange={onEditableChange}
+            style={inputStyle}
+          />
+          Editable
         </Flex>
       </Flex>
-      {renderStorage(1)}
-    </>
+      <Flex row spaceAround>
+        {renderStorage(1)}
+      </Flex>
+    </Flex>
   );
 };

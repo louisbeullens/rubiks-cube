@@ -1,16 +1,18 @@
 import { IStorageData } from "./components/CubeStorage.types";
-import { EPerspective } from "./components/RubiksCube.types";
-import { ICubeCharacteristic } from "./cube-characteristics";
+import { ECubeType, EPerspective } from "./components/RubiksCube.types";
+import { defaultState, getCorePermutation } from "./rubiks-cube/cube-util";
+import { coreOrientationMap } from "./rubiks-cube/rotationMap";
+import { base64Decode, base64Encode, convertByteSize } from "./utils";
 
 const extractIdRegex = /^cube-(\d+)$/;
 
 export const persistItem = (
   id: string,
-  { type, perspective, colors, state }: IStorageData
+  { type, perspective, state }: IStorageData
 ) => {
   window.localStorage.setItem(
     `cube-${id}`,
-    JSON.stringify({ type, perspective, colors, state })
+    JSON.stringify({ type, perspective, state })
   );
 };
 
@@ -18,13 +20,10 @@ export const removeItem = (id: string) => {
   window.localStorage.removeItem(`cube-${id}`);
 };
 
-export const createNewItem = (
-  characteristic: ICubeCharacteristic
-): IStorageData => ({
+export const createNewItem = (characteristic: any): IStorageData => ({
   type: characteristic.type,
-  perspective: EPerspective.UNFOLDED,
-  colors: characteristic.colors,
-  state: characteristic.createSolvedState(),
+  perspective: EPerspective.ISOMETRIC,
+  state: defaultState,
 });
 
 export const retrieveItem = (id: string) => {
@@ -57,4 +56,55 @@ export const retrieveItems = () => {
     items.push({ id, ...item });
   }
   return items;
+};
+
+export const serializeCube = ({ type, perspective, state }: IStorageData) => {
+  const corePermutation = getCorePermutation(state);
+
+  const raw = [
+    ...state.slice(0, 12).map((el) => el - 2),
+    ...state.slice(12, 20).map((el) => el - 39),
+    ...state.slice(20).map((el) => el % 4),
+    Object.keys(coreOrientationMap).sort().indexOf(corePermutation),
+    type - 1,
+    perspective - 1,
+  ];
+
+  const serializedCube = convertByteSize(
+    raw,
+    [...Array.from({ length: 20 }, () => 5), 2, 2, 2, 2, 2, 2, 5, 2, 1],
+    8
+  );
+
+  return base64Encode(serializedCube);
+};
+
+export const deserializeCube = (data: string): IStorageData => {
+  const serializedCube = base64Decode(data);
+
+  // prettier-ignore
+  const raw = convertByteSize(
+        serializedCube, 
+        8, 
+        [...Array.from({ length: 20 }, () => 5), 2, 2, 2, 2, 2, 2, 5, 2, 1]
+    )
+
+  const corePermutation = Object.keys(coreOrientationMap).sort()[raw[26]];
+
+  const state: number[] = [
+    ...raw.slice(0, 12).map((el) => el + 2),
+    ...raw.slice(12, 20).map((el, i) => el + 39),
+    ...raw
+      .slice(20, 26)
+      .map((el, i) => el + 4 * (Number(corePermutation[i]) + 21)),
+  ];
+
+  const type: ECubeType = raw[27] + 1;
+  const perspective: EPerspective = raw[28] + 1;
+
+  return {
+    type,
+    perspective,
+    state,
+  };
 };

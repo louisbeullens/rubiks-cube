@@ -1,73 +1,44 @@
 import React from "react";
-import { usePropOverState } from "../hooks";
+import { defaultState } from "../rubiks-cube/cube-util";
+import fundamentalOperations from "../rubiks-cube/fundamentalOperations";
 import {
-  allMoves,
-  createSolvedState,
-  getAllowedMoves,
-  rotateByMoveName,
-  TCanFaceRotate,
-  TCubeState,
-  TMoveNames,
-} from "../rubiks-cube";
-import { ICubeHandle } from "./RubiksCube.types";
+  createOperationMap,
+  initOperationMap,
+  operate,
+} from "../rubiks-cube/operation-util";
+import { TCubeState } from "../rubiks-cube/types";
+import { Flex } from "./Flex";
 
 interface IMoveButtonsProps {
-  cubeRef?: React.RefObject<ICubeHandle>;
-  state?: TCubeState;
-  canFaceRotate?: TCanFaceRotate;
-  onClick?: (move: TMoveNames, newState: TCubeState) => void;
+  state: TCubeState;
+  onClick?: (newState: TCubeState, move: string) => void;
+  getMovesAllowed: (state: TCubeState) => Record<string, boolean>;
 }
 
 export const MoveButtons = ({
-  cubeRef,
   state: stateProp,
-  canFaceRotate,
   onClick,
+  getMovesAllowed,
 }: IMoveButtonsProps) => {
-  // allow component to act on newState from cubeRef.current.rotateByMoveName
-  // even in the case that the cube has not rerendered itself
-  const [state, setState] = usePropOverState(createSolvedState(), stateProp);
-
-  // update the state when cubeRef.current is available
-  React.useEffect(() => {
-    if (!cubeRef || !cubeRef.current) {
-      return;
-    }
-    setState(cubeRef.current.getState());
-    // eslint-disable-next-line @grncdr/react-hooks/exhaustive-deps
-  }, [setState, cubeRef, cubeRef?.current]);
+  const operationsRef = React.useRef(
+    initOperationMap(createOperationMap(fundamentalOperations), defaultState)
+  );
 
   // internal buttonClick handler
-  // prefer stateProp
-  // eventually fallback to cubeRef
-  const onMoveButtonClickInternal = (move: TMoveNames) => {
-    let newState: TCubeState | undefined;
-    if (stateProp) {
-      newState = rotateByMoveName(state, move, canFaceRotate);
-    } else if (cubeRef) {
-      newState = cubeRef.current?.rotateByMoveName(move);
-    }
-    if (!newState) {
-      return;
-    }
-    setState(newState);
-    onClick?.(move, newState);
+  const onMoveButtonClickInternal = (move: string) => {
+    onClick?.(
+      operate(operationsRef.current, stateProp, move, defaultState),
+      move
+    );
   };
-
-  // get allowed moves for current state
-  const enabledMoves = getAllowedMoves(
-    state,
-    canFaceRotate ?? cubeRef?.current?.canFaceRotate
-  );
 
   return (
     <>
-      {Object.keys(allMoves).map((untypedMove) => {
-        const move = untypedMove as TMoveNames;
+      {Object.entries(getMovesAllowed(stateProp)).map(([move, enabled]) => {
         return (
           <button
             key={move}
-            disabled={!enabledMoves.includes(move)}
+            disabled={!enabled}
             onClick={() => onMoveButtonClickInternal(move)}
           >
             {move}

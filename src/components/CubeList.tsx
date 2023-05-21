@@ -1,3 +1,4 @@
+import { CSSProperties } from "react";
 import { getCubeCharacteristicsByType } from "../cube-characteristics";
 import { AbstractList, IListProps, IRenderItemProps } from "./AbstractList";
 import { IStorageData } from "./CubeStorage.types";
@@ -18,19 +19,19 @@ const renderItem = ({
   onRemove,
 }: IRenderItemProps<IStorageData>) => {
   const border = isSelected ? "2px solid blue" : "1px solid black";
-  const style = { position: itemPosition, border, padding: size };
+  const style: CSSProperties = {
+    position: itemPosition,
+    border,
+  };
 
-  const { type, perspective, colors, state } = item;
-  const { renderFace } = getCubeCharacteristicsByType(type);
+  const { type, perspective, state: cubeState } = item;
+  const { texture } = getCubeCharacteristicsByType(type);
 
   return (
     <div {...{ style }}>
-      <div {...{ onClick }}>
-        <RubiksCube
-          scale={0.5}
-          {...{ renderFace, perspective, colors, state }}
-        />
-      </div>
+      <span {...{ onClick }}>
+        <RubiksCube {...{ cubeState, perspective, texture, scale: 0.25 }} />
+      </span>
       <button style={removeButtonStyle} onClick={onRemove}>
         -
       </button>

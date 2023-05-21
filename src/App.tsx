@@ -1,52 +1,43 @@
 import React from "react";
 import { useSearchParams } from "react-router-dom";
-import { CubeController } from "./components/CubeController";
+import { earthCubeCharacteristic } from "./components/EarthCube";
 import {
+  CubeController,
   CubeStorage,
-  EPerspective,
   Flex,
-  ICubeHandle,
   IStorageData,
-  LatchCube,
-  MoveButtons,
+  latchCubeCharacteristic,
+  rubiksCharacteristic,
   RubiksCube,
 } from "./components";
-import {
-  getCubeCharacteristicsByType,
-  serializeCube,
-} from "./cube-characteristics";
+import { registerCube } from "./cube-characteristics";
+import { serializeCube } from "./storage-utils";
+
+registerCube(rubiksCharacteristic);
+registerCube(latchCubeCharacteristic);
+registerCube(earthCubeCharacteristic);
 
 function App() {
   const [params, setParams] = useSearchParams();
 
-  const handleSave = React.useCallback(
-    (data: IStorageData, createNew: boolean) => {
-      if (!createNew) {
-        return;
-      }
-      const characteristic = getCubeCharacteristicsByType(data.type);
-      const permaLink = serializeCube(data, characteristic.significantBits);
+  const onSaveClick = React.useCallback(
+    (data: IStorageData) => {
+      const permaLink = serializeCube(data);
       setParams({ config: permaLink });
     },
     [setParams]
   );
 
-  const cubeRef = React.useRef<ICubeHandle>(null);
+  const permaLink = params.get("config");
 
   return (
     <>
-      <Flex row width="100vw" wrapReverse>
-        <CubeController
-          permaLink={params.get("config")}
-          {...{ handleSave }}
-          initialPerspective={EPerspective.UNFOLDED}
-        >
+      <Flex row width="100vw" height="100vh">
+        <CubeController permaLink={permaLink} onSaveClick={onSaveClick}>
           <RubiksCube />
           <CubeStorage />
         </CubeController>
       </Flex>
-      {/* <LatchCube ref={cubeRef} perspective={EPerspective.ISOMETRIC} />
-      <MoveButtons {...{cubeRef}} /> */}
     </>
   );
 }
