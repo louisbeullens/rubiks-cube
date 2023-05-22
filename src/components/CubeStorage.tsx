@@ -103,9 +103,8 @@ export const CubeStorage = React.forwardRef<
         {allCubes
           .filter(({ hidden }) => !hidden)
           .map((characteristic) => (
-            <Flex grow column>
+            <Flex key={characteristic.type} grow column>
               <button
-                key={characteristic.type}
                 onClick={() => onInsert(characteristic)}
               >{`Add ${characteristic.name}`}</button>
             </Flex>
