@@ -18,7 +18,7 @@
   "protocol_handlers": [
     {
       "protocol": "web+rubik",
-      "url": "?protocol=%s"
+      "url": "https://louisbeullens.github.io/rubiks-cube/?protocol=%s"
     }
   ]
 }
