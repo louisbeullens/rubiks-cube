@@ -1,16 +1,16 @@
 {
   "files": {
     "main.css": "/rubiks-cube/static/css/main.e6c13ad2.css",
-    "main.js": "/rubiks-cube/static/js/main.5822f029.js",
+    "main.js": "/rubiks-cube/static/js/main.81d1df3b.js",
     "static/media/earth-cube.png": "/rubiks-cube/static/media/earth-cube.ae755bbeef38ecc5d8d0.png",
     "static/media/latch-cube.png": "/rubiks-cube/static/media/latch-cube.23dc829672a2bb824301.png",
     "static/media/rubiks-cube.png": "/rubiks-cube/static/media/rubiks-cube.2cd6c80360bcee474456.png",
     "index.html": "/rubiks-cube/index.html",
     "main.e6c13ad2.css.map": "/rubiks-cube/static/css/main.e6c13ad2.css.map",
-    "main.5822f029.js.map": "/rubiks-cube/static/js/main.5822f029.js.map"
+    "main.81d1df3b.js.map": "/rubiks-cube/static/js/main.81d1df3b.js.map"
   },
   "entrypoints": [
     "static/css/main.e6c13ad2.css",
-    "static/js/main.5822f029.js"
+    "static/js/main.81d1df3b.js"
   ]
 }
