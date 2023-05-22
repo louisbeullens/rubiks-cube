@@ -14,5 +14,11 @@
   "background_color": "#ffffff",
   "launch_handler": {
     "client_mode": "navigate-new"
-}
+  },
+  "protocol_handlers": [
+    {
+      "protocol": "web+rubik",
+      "url": "/rubiks-cube?protocol=%s"
+    }
+  ]
 }
