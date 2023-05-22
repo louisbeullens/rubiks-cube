@@ -36,12 +36,9 @@ export const convertByteSize = (
     let bitsConsume = Math.min(bitsFree, bitsLeft);
     let bitMask = 2 ** bitsFree - 1;
     let bitsShift = (8 + bitsFree - bitsLeft) % 8;
-    // console.log('before', {bitsFree, bitsLeft, bitsConsume, bitMask, bitsShift, iOffset, iByte, o})
     iByte = rol8(iByte, bitsShift);
     outputBuffer[o] = outputBuffer[o] | (iByte & bitMask);
-    // console.log('output', {iByte, output: outputBuffer[o]})
     iByte = rol8(iByte & ~bitMask, 8 - bitsShift);
-    // console.log('after', {iByte})
     bitsFree -= bitsConsume;
     if (bitsFree === 0) {
       o++;
