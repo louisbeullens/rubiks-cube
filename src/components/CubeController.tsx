@@ -157,6 +157,7 @@ export const CubeController = ({
 
     return (
       <RubiksCube
+        scale={0.25}
         cubeState={state}
         texture={characteristic.texture}
         perspective={perspective}

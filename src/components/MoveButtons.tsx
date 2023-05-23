@@ -7,6 +7,7 @@ import {
   operate,
 } from "../rubiks-cube/operation-util";
 import { TCubeState } from "../rubiks-cube/types";
+import { Flex } from "./Flex";
 
 interface IMoveButtonsProps {
   state: TCubeState;
@@ -33,17 +34,22 @@ export const MoveButtons = ({
 
   return (
     <>
-      {Object.entries(getMovesAllowed(stateProp)).map(([move, enabled]) => {
-        return (
-          <button
-            key={move}
-            disabled={!enabled}
-            onClick={() => onMoveButtonClickInternal(move)}
-          >
-            {move}
-          </button>
-        );
-      })}
+      {Object.entries(getMovesAllowed(stateProp))
+        .map((el, i, arr) => arr.slice(i, i + 3))
+        .filter((el, i) => i % 3 === 0)
+        .map((group, i) => (
+          <Flex key={i} row>
+            {group.map(([move, enabled]) => (
+              <button
+                key={move}
+                disabled={!enabled}
+                onClick={() => onMoveButtonClickInternal(move)}
+              >
+                {move}
+              </button>
+            ))}
+          </Flex>
+        ))}
     </>
   );
 };
