@@ -38,15 +38,16 @@ export const MoveButtons = ({
         .map((el, i, arr) => arr.slice(i, i + 3))
         .filter((el, i) => i % 3 === 0)
         .map((group, i) => (
-          <Flex key={i} row>
+          <Flex key={i} grow row>
             {group.map(([move, enabled]) => (
-              <button
-                key={move}
-                disabled={!enabled}
-                onClick={() => onMoveButtonClickInternal(move)}
-              >
-                {move}
-              </button>
+              <Flex key={move} grow column>
+                <button
+                  disabled={!enabled}
+                  onClick={() => onMoveButtonClickInternal(move)}
+                >
+                  {move}
+                </button>
+              </Flex>
             ))}
           </Flex>
         ))}

@@ -184,44 +184,48 @@ export const CubeController = ({
         {renderCube()}
       </Flex>
       <Flex row wrap spaceAround>
-        <Flex row wrap>
+        <Flex grow={1} column>
           <MoveButtons
             state={state}
             onClick={setState}
             getMovesAllowed={characteristic.getMovesAllowed}
           />
         </Flex>
-        <Flex row>
-          <button onClick={onLoadClickInternal}>Load</button>
-          <button onClick={onSaveClickInternal}>Save</button>
-          {/* <button onClick={onSolveClickInternal}>Solve</button> */}
-        </Flex>
-        <Flex row>
-          Perspective
-          <select
-            onChange={onPerspectiveChange}
-            value={perspective}
-            style={inputStyle}
-          >
-            <option value={EPerspective.UNFOLDED}>unfold</option>
-            <option value={EPerspective.ISOMETRIC}>isometric</option>
-          </select>
-        </Flex>
-        <Flex row>
-          <input
-            type="checkbox"
-            checked={autoStorage}
-            onChange={onAutoStorageChange}
-            style={inputStyle}
-          />
-          Auto load / Auto save
-          <input
-            type="checkbox"
-            checked={editable}
-            onChange={onEditableChange}
-            style={inputStyle}
-          />
-          Editable
+        <Flex grow={999} column>
+          <Flex row wrap spaceAround>
+            <Flex row>
+              <button onClick={onLoadClickInternal}>Load</button>
+              <button onClick={onSaveClickInternal}>Save</button>
+              {/* <button onClick={onSolveClickInternal}>Solve</button> */}
+            </Flex>
+            <Flex row>
+              Perspective
+              <select
+                onChange={onPerspectiveChange}
+                value={perspective}
+                style={inputStyle}
+              >
+                <option value={EPerspective.UNFOLDED}>unfold</option>
+                <option value={EPerspective.ISOMETRIC}>isometric</option>
+              </select>
+            </Flex>
+            <Flex row>
+              <input
+                type="checkbox"
+                checked={autoStorage}
+                onChange={onAutoStorageChange}
+                style={inputStyle}
+              />
+              Auto load / Auto save
+              <input
+                type="checkbox"
+                checked={editable}
+                onChange={onEditableChange}
+                style={inputStyle}
+              />
+              Editable
+            </Flex>
+          </Flex>
         </Flex>
       </Flex>
       <Flex row spaceAround>
