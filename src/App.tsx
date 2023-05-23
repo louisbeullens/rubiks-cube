@@ -17,6 +17,8 @@ registerCube(rubiksCharacteristic);
 registerCube(latchCubeCharacteristic);
 registerCube(earthCubeCharacteristic);
 
+const protocolRegexp = /^web(?:\+|\s)rubik:\/\/([^/]+)\/?$/;
+
 function App() {
   const [params, setParams] = useSearchParams();
 
@@ -28,7 +30,10 @@ function App() {
     [setParams]
   );
 
-  const permaLink = params.get("config");
+  // extract permalink from protocol url or fallback to config search param
+  const protocol = params.get("protocol") ?? "";
+  const parsed = protocolRegexp.exec(protocol);
+  const permaLink = parsed?.[1] ?? params.get("config");
 
   return (
     <>

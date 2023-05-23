@@ -5,7 +5,7 @@
     {
       "src": "rubiks.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "256x256"
     }
   ],
   "start_url": ".",
@@ -14,5 +14,11 @@
   "background_color": "#ffffff",
   "launch_handler": {
     "client_mode": "navigate-new"
-}
+  },
+  "protocol_handlers": [
+    {
+      "protocol": "web+rubik",
+      "url": "https://louisbeullens.github.io/rubiks-cube/?protocol=%s"
+    }
+  ]
 }

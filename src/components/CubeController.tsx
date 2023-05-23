@@ -42,7 +42,7 @@ export const CubeController = ({
   ) as React.ReactElement<ICubeStorageProps> | undefined;
 
   const [characteristic, setCharacteristic] = React.useState(
-    getCubeCharacteristicsByType(ECubeType.Latch)
+    getCubeCharacteristicsByType(ECubeType.Rubiks)
   );
   const [perspective, setPerspective] = React.useState(initialPerspective);
   const [state, setState] = React.useState(defaultState);

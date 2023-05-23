@@ -45,7 +45,7 @@ export const retrieveItems = () => {
     if (!key || !key.startsWith("cube-")) {
       continue;
     }
-    const id = extractIdRegex.exec(key)?.at(1);
+    const id = extractIdRegex.exec(key)?.[1];
     if (!id) {
       continue;
     }
