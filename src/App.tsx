@@ -1,8 +1,8 @@
 import React from "react";
 import { useSearchParams } from "react-router-dom";
+import { CubeController } from "./components/CubeController";
 import { earthCubeCharacteristic } from "./components/EarthCube";
 import {
-  CubeController,
   CubeStorage,
   Flex,
   IStorageData,
@@ -17,7 +17,7 @@ registerCube(rubiksCharacteristic);
 registerCube(latchCubeCharacteristic);
 registerCube(earthCubeCharacteristic);
 
-const protocolRegexp = /^web(?:\+|\s)rubik:\/\/([^/]+)\/?$/;
+const protocolRegexp = /^web(?:\+|\s)rubik:(?:\/\/)?([^/]+)\/?$/;
 
 function App() {
   const [params, setParams] = useSearchParams();
@@ -37,12 +37,14 @@ function App() {
 
   return (
     <>
-      <Flex row width="100vw" height="100vh">
-        <CubeController permaLink={permaLink} onSaveClick={onSaveClick}>
-          <RubiksCube />
-          <CubeStorage />
-        </CubeController>
-      </Flex>
+      <div style={{ minHeight: "100vh" }}>
+        <Flex row width="100vw">
+          <CubeController permaLink={permaLink} onSaveClick={onSaveClick}>
+            <RubiksCube />
+            <CubeStorage />
+          </CubeController>
+        </Flex>
+      </div>
     </>
   );
 }

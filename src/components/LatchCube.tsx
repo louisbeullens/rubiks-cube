@@ -43,11 +43,11 @@ export const latchCubeCharacteristic: ICubeCharacteristic = {
   getMovesAllowed: getLatchCubeMovesAllowed,
 };
 
-export const LatchCube: React.FC<Omit<ICubeProps, "texture">> = ({
+export const LatchCube = ({
   cubeState,
   perspective,
   onChange,
-}) => (
+}: Omit<ICubeProps, "texture">) => (
   <RubiksCube
     {...{
       cubeState,

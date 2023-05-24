@@ -2,7 +2,7 @@ import { CSSProperties } from "react";
 import { getCubeCharacteristicsByType } from "../cube-characteristics";
 import { AbstractList, IListProps, IRenderItemProps } from "./AbstractList";
 import { IStorageData } from "./CubeStorage.types";
-import { RubiksCube } from "./RubiksCube";
+import RubiksCube from "./RubiksCube";
 
 const size = "25px";
 const itemPosition = "relative" as const;
@@ -22,6 +22,7 @@ const renderItem = ({
   const style: CSSProperties = {
     position: itemPosition,
     border,
+    backgroundColor: "#FFFFFF",
   };
 
   const { type, perspective, state: cubeState } = item;

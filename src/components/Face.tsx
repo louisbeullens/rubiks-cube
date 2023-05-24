@@ -16,7 +16,7 @@ interface IFaceProps {
 export const STICKER_SIZE = 100;
 export const FACE_SIZE = STICKER_SIZE * 3;
 
-export const Face: React.FC<IFaceProps> = ({
+export const Face = ({
   faceIndex,
   face,
   texturePath,

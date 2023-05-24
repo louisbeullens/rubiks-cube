@@ -17,9 +17,9 @@
       {
         "staticHooks": {
           "useLatestRef": true,
-          "usePropOverState": [
+          "useControlledState": [
             false,
-            false,
+            true,
             true
           ]
         }

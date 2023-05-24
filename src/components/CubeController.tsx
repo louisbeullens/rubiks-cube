@@ -179,11 +179,19 @@ export const CubeController = ({
   const inputStyle = React.useMemo(() => ({ margin: "0 1em" }), []);
 
   return (
-    <Flex grow column spaceBetween padding="0 1vw">
-      <Flex row spaceAround>
-        {renderCube()}
-      </Flex>
-      <Flex row wrap spaceAround>
+    <Flex grow column spaceBetween padding="0 1vw" gap="1rem">
+      <div
+        style={{
+          backgroundColor: "#FFFFFF",
+          position: "sticky",
+          top: "0px",
+        }}
+      >
+        <Flex row spaceAround>
+          {renderCube()}
+        </Flex>
+      </div>
+      <Flex row wrap spaceAround gap="1rem">
         <Flex grow={1} column>
           <MoveButtons
             state={state}

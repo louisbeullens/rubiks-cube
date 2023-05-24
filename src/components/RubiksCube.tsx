@@ -1,6 +1,7 @@
 import React from "react";
+import isEqual from "lodash/isEqual";
 import { ICubeCharacteristic } from "../cube-characteristics";
-import { useLatestRef, usePropOverState } from "../hooks";
+import { useControlledState } from "../hooks";
 import defaultTexture from "../images/rubiks-cube.png";
 import coordinates from "../rubiks-cube/coordinates";
 import {
@@ -136,24 +137,30 @@ export interface ICubeProps {
   onChange?: (cubeState: TCubeState) => void;
 }
 
-export const RubiksCube: React.FC<ICubeProps> = ({
-  cubeState: cubeStateProp,
-  texture = defaultTexture,
-  perspective: perspectiveType = EPerspective.UNFOLDED,
-  scale = 0.5,
-  onChange,
-}) => {
-  const [cubeState, setCubeState] = usePropOverState(
-    defaultState,
-    cubeStateProp
-  );
+export interface ICubeHandle {
+  cubeState: TCubeState;
+  change: (cubeState: TCubeState) => void;
+}
 
-  const onChangeRef = useLatestRef(onChange);
+export const RubiksCube = React.forwardRef<ICubeHandle, ICubeProps>(
+  (
+    {
+      cubeState: cubeStateProp,
+      texture = defaultTexture,
+      perspective: perspectiveType = EPerspective.UNFOLDED,
+      scale = 0.5,
+      onChange,
+    },
+    forwardRef
+  ) => {
+    const [cubeState, setCubeState] = useControlledState(
+      defaultState,
+      cubeStateProp
+    );
 
-  const cube = stateToCube(cubeState);
+    const cube = stateToCube(cubeState);
 
-  const onLeftClick = React.useCallback(
-    (faceIndex: number, u: number, v: number) => {
+    const onLeftClick = (faceIndex: number, u: number, v: number) => {
       if (u === 0 && v === 0) {
         return;
       }
@@ -167,14 +174,11 @@ export const RubiksCube: React.FC<ICubeProps> = ({
       newState[i] =
         i < 12 ? (newState[i] % 24) + 2 : ((newState[i] - 36) % 24) + 39;
 
-      onChangeRef.current?.(newState);
+      onChange?.(newState);
       setCubeState(newState);
-    },
-    [cubeState, setCubeState]
-  );
+    };
 
-  const onRightClick = React.useCallback(
-    (faceIndex: number, u: number, v: number) => {
+    const onRightClick = (faceIndex: number, u: number, v: number) => {
       const point = uvToPoint3D(faceIndex, u, v);
       let i = coordinates.findIndex(
         ({ x, y, z }) => x === point.x && y === point.y && z === point.z
@@ -189,43 +193,71 @@ export const RubiksCube: React.FC<ICubeProps> = ({
 
       newState[i] = modulus * base + ((orientation + 1) % modulus);
 
-      onChangeRef.current?.(newState);
+      onChange?.(newState);
       setCubeState(newState);
-    },
-    [cubeState, setCubeState]
-  );
+    };
 
-  const perspective = perspectives[perspectiveType];
-
-  const corePermutation = getCorePermutation(cubeState);
-
-  const coreOrientation = (coreOrientationMap as Record<string, number[]>)[
-    corePermutation
-  ];
-
-  const faceElements: JSX.Element[] = [];
-
-  cube.forEach((face, faceIndex) => {
-    faceElements.push(
-      <g key={faceIndex} transform={perspective[faceIndex]}>
-        <Face
-          faceIndex={faceIndex}
-          face={normailzeFace(face)}
-          texturePath={texture}
-          centerRotation={mod4(
-            coreOrientation[faceIndex],
-            getCenterRotation(face[4])
-          )}
-          onLeftClick={onLeftClick}
-          onRightClick={onRightClick}
-        />
-      </g>
+    React.useImperativeHandle(
+      forwardRef,
+      () => ({
+        cubeState,
+        change: (cubeState) => {
+          onChange?.(cubeState);
+          setCubeState(cubeState);
+        },
+      }),
+      [cubeState, onChange]
     );
-  });
 
-  return (
-    <svg width={14 * STICKER_SIZE * scale} height={11 * STICKER_SIZE * scale}>
-      <g transform={`scale(${scale})`}>{faceElements}</g>
-    </svg>
-  );
-};
+    const perspective = perspectives[perspectiveType];
+
+    const corePermutation = getCorePermutation(cubeState);
+
+    const coreOrientation = (coreOrientationMap as Record<string, number[]>)[
+      corePermutation
+    ];
+
+    const faceElements: JSX.Element[] = [];
+
+    cube.forEach((face, faceIndex) => {
+      faceElements.push(
+        <g key={faceIndex} transform={perspective[faceIndex]}>
+          <Face
+            faceIndex={faceIndex}
+            face={normailzeFace(face)}
+            texturePath={texture}
+            centerRotation={mod4(
+              coreOrientation[faceIndex],
+              getCenterRotation(face[4])
+            )}
+            onLeftClick={onLeftClick}
+            onRightClick={onRightClick}
+          />
+        </g>
+      );
+    });
+
+    return (
+      <svg width={14 * STICKER_SIZE * scale} height={11 * STICKER_SIZE * scale}>
+        <g transform={`scale(${scale})`}>{faceElements}</g>
+      </svg>
+    );
+  }
+);
+
+export default React.memo(RubiksCube, (prevProps, nextProps) => {
+  if (Object.keys(prevProps).length !== Object.keys(nextProps).length) {
+    return false;
+  }
+  for (const key in nextProps) {
+    if (
+      key === "cubeState" &&
+      !isEqual(prevProps.cubeState, nextProps.cubeState)
+    ) {
+      return false;
+    } else if ((prevProps as any)[key] !== (nextProps as any)[key]) {
+      return false;
+    }
+  }
+  return true;
+});

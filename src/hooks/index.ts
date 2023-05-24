@@ -1,2 +1,2 @@
+export * from "./useControlledState";
 export * from "./useLatestRef";
-export * from "./usePropOverState";

@@ -44,6 +44,7 @@
   },
   "devDependencies": {
     "@grncdr/eslint-plugin-react-hooks": "^5.0.0-p30d423311.0",
+    "@types/lodash": "^4.14.194",
     "@types/uuid": "^9.0.0",
     "eslint": "^8.34.0",
     "eslint-plugin-prettier": "^4.2.1",

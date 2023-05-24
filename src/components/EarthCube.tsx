@@ -16,11 +16,11 @@ export const earthCubeCharacteristic: ICubeCharacteristic = {
   getMovesAllowed: getRubiksCubeMovesAllowed,
 };
 
-export const EarthCube: React.FC<Omit<ICubeProps, "texture">> = ({
+export const EarthCube = ({
   cubeState,
   perspective,
   onChange,
-}) => (
+}: Omit<ICubeProps, "texture">) => (
   <RubiksCube
     {...{
       cubeState,

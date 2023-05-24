@@ -3,6 +3,7 @@ export interface IFlexProps {
   width?: string;
   height?: string;
   padding?: string;
+  gap?: string;
   inline?: true;
   grow?: true | number;
   shrink?: true | number;
@@ -22,6 +23,7 @@ export const Flex = ({
   width,
   height,
   padding,
+  gap,
   inline,
   direction,
   column,
@@ -50,6 +52,7 @@ export const Flex = ({
     width,
     height,
     padding,
+    gap,
     flexDirection,
     justifyContent,
     flexWrap,

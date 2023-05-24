@@ -42,6 +42,7 @@ export const MoveButtons = ({
             {group.map(([move, enabled]) => (
               <Flex key={move} grow column>
                 <button
+                  style={{ lineHeight: "3rem" }}
                   disabled={!enabled}
                   onClick={() => onMoveButtonClickInternal(move)}
                 >
