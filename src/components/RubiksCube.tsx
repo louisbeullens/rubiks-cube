@@ -13,11 +13,16 @@ import {
 import fundamentalOperations from "../rubiks-cube/fundamentalOperations";
 import { createOperationMap } from "../rubiks-cube/operation-util";
 import { coreOrientationMap } from "../rubiks-cube/rotationMap";
-import { faceNames, uvToPoint3D } from "../rubiks-cube/spatial-util";
+import {
+  faceNames as untypedFaceNames,
+  uvToPoint3D,
+} from "../rubiks-cube/spatial-util";
 import { TCubeState } from "../rubiks-cube/types";
 import { mod4 } from "../utils";
 import { Face, FACE_SIZE, STICKER_SIZE } from "./Face";
 import { ECubeType, EPerspective } from "./RubiksCube.types";
+
+const faceNames = untypedFaceNames as Record<string, number>;
 
 const { SQRT1_2, SQRT2 } = Math;
 
@@ -115,7 +120,11 @@ export function getRubiksCubeMovesAllowed(state: TCubeState) {
 
   Object.keys(operations)
     .filter((move) => move.length <= 2 && !["M", "E", "S"].includes(move[0]))
-    .sort()
+    .sort((a, b) =>
+      a[0] in faceNames && b[0] in faceNames && a[0] !== b[0]
+        ? faceNames[a[0]] - faceNames[b[0]]
+        : a.localeCompare(b)
+    )
     .forEach((move) => {
       result[move] = true;
     });
