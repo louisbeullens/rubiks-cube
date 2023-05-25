@@ -13,10 +13,16 @@ import {
 } from "./CubeStorage.types";
 import { Flex } from "./Flex";
 import { MoveButtons } from "./MoveButtons";
-import { RubiksCube } from "./RubiksCube";
+import {
+  getRubiksCubeMovesAllowed,
+  ICubeHandle,
+  RubiksCube,
+} from "./RubiksCube";
 import { ECubeType, EPerspective } from "./RubiksCube.types";
 
 export interface ICubeControlProps {
+  cubeRef?: React.RefObject<ICubeHandle>;
+  getMovesAllowed?: typeof getRubiksCubeMovesAllowed;
   permaLink?: string | null;
   initialPerspective?: EPerspective;
   onSaveClick?: (data: IStorageData) => void;
@@ -24,11 +30,15 @@ export interface ICubeControlProps {
 }
 
 export const CubeController = ({
+  cubeRef,
+  getMovesAllowed: getMovesAllowedProp,
   permaLink,
   initialPerspective = EPerspective.UNFOLDED,
   onSaveClick,
   children: untypedChildren,
 }: ICubeControlProps) => {
+  const getMovesAllowed = getMovesAllowedProp ?? getRubiksCubeMovesAllowed;
+
   const children = React.Children.toArray(
     untypedChildren
   ) as React.ReactElement[];
@@ -45,7 +55,9 @@ export const CubeController = ({
     getCubeCharacteristicsByType(ECubeType.Rubiks)
   );
   const [perspective, setPerspective] = React.useState(initialPerspective);
-  const [state, setState] = React.useState(defaultState);
+  const [state, setState] = React.useState(
+    cubeRef?.current?.cubeState ?? defaultState
+  );
   const [autoStorage, setAutoStorage] = React.useState(
     permaLink ? false : true
   );
@@ -63,19 +75,14 @@ export const CubeController = ({
   const onAutoStorageChange = () => setAutoStorage((toggle) => !toggle);
   const onEditableChange = () => setEditable((toggle) => !toggle);
 
-  // convert permaLink to states
+  const reffedCubeState = cubeRef?.current?.cubeState;
+
   React.useEffect(() => {
-    if (!permaLink) {
+    if (!reffedCubeState) {
       return;
     }
-    const data = deserializeCube(permaLink);
-    setPerspective(data.perspective ?? perspectiveRef.current);
-    setState(data.state);
-
-    setCharacteristic(getCubeCharacteristicsByType(data.type));
-    // don't make next render override selected cube
-    setAutoStorage(false);
-  }, [permaLink]);
+    setState(reffedCubeState);
+  }, [reffedCubeState]);
 
   // Save / Load functions
   const saveConfig = React.useCallback(
@@ -85,11 +92,28 @@ export const CubeController = ({
     []
   );
 
-  const loadConfig = React.useCallback((data: IStorageData) => {
-    setPerspective((current) => data.perspective ?? current);
-    setCharacteristic(getCubeCharacteristicsByType(data.type));
-    setState((current) => data.state ?? current);
-  }, []);
+  const loadConfig = React.useCallback(
+    (data: IStorageData) => {
+      setPerspective((current) => data.perspective ?? current);
+      setCharacteristic(getCubeCharacteristicsByType(data.type));
+      if (cubeRef?.current) {
+        cubeRef.current.cubeState = data.state;
+      }
+      setState((current) => data.state ?? current);
+    },
+    [cubeRef]
+  );
+
+  // convert permaLink to states
+  React.useEffect(() => {
+    if (!permaLink) {
+      return;
+    }
+    const data = deserializeCube(permaLink);
+    loadConfig(data);
+    // don't make next render override selected cube
+    setAutoStorage(false);
+  }, [permaLink, loadConfig]);
 
   React.useEffect(() => {
     if (!autoStorageRef.current) {
@@ -116,8 +140,8 @@ export const CubeController = ({
       type: characteristic.type,
       state: newState,
     };
-    saveConfig(data, true);
     onSaveClickRef.current?.(data);
+    saveConfig(data, true);
   };
 
   const onLoadClickInternal = () => {
@@ -136,19 +160,23 @@ export const CubeController = ({
     setState(state);
   };
 
+  const onMoveButtonClick = (state: TCubeState) => {
+    if (cubeRef?.current) {
+      cubeRef.current.cubeState = state;
+    }
+    setState(state);
+  };
+
   // const onSolveClickInternal = () => {
   //
   // };
 
-  const onStorageChange = React.useCallback(
-    (item?: IStorageData) => {
-      if (!autoStorageRef.current || !item) {
-        return;
-      }
-      loadConfig(item);
-    },
-    [loadConfig]
-  );
+  const onStorageChange = (item?: IStorageData) => {
+    if (!autoStorageRef.current || !item) {
+      return;
+    }
+    loadConfig(item);
+  };
 
   const renderCube = () => {
     if (!Cube) {
@@ -166,8 +194,8 @@ export const CubeController = ({
     );
   };
 
-  const renderStorage = (i: number) => {
-    if (!Storage || Storage.key !== children.at(i)?.key) {
+  const renderStorage = () => {
+    if (!Storage) {
       return;
     }
     return React.cloneElement(Storage, {
@@ -195,8 +223,10 @@ export const CubeController = ({
         <Flex grow={1} column>
           <MoveButtons
             state={state}
-            onClick={setState}
-            getMovesAllowed={characteristic.getMovesAllowed}
+            onClick={onMoveButtonClick}
+            getMovesAllowed={
+              cubeRef ? getMovesAllowed : characteristic.getMovesAllowed
+            }
           />
         </Flex>
         <Flex grow={999} column>
@@ -237,7 +267,7 @@ export const CubeController = ({
         </Flex>
       </Flex>
       <Flex row spaceAround>
-        {renderStorage(1)}
+        {renderStorage()}
       </Flex>
     </Flex>
   );

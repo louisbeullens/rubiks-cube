@@ -7,10 +7,17 @@ import { faceNames } from "../rubiks-cube/spatial-util";
 import { TCubeState } from "../rubiks-cube/types";
 import {
   getRubiksCubeMovesAllowed,
+  ICubeHandle,
   ICubeProps,
   RubiksCube,
 } from "./RubiksCube";
 import { ECubeType } from "./RubiksCube.types";
+
+const directions: Record<string, 1 | undefined | -1> = {
+  "": 1,
+  "2": undefined,
+  "'": -1,
+};
 
 function getLatchCubeMovesAllowed(state: TCubeState) {
   const cube = stateToCube(state, latchCubies);
@@ -28,7 +35,11 @@ function getLatchCubeMovesAllowed(state: TCubeState) {
     if (!constraint) {
       return;
     }
-    if (face.find((el) => el && el !== constraint)) {
+    const direction: 1 | undefined | -1 = directions[move[1] ?? ""];
+    if (
+      face.find((el) => el && el !== constraint) ||
+      (direction && face.find((el) => el && el !== direction))
+    ) {
       result[move] = false;
     }
   });
@@ -43,12 +54,12 @@ export const latchCubeCharacteristic: ICubeCharacteristic = {
   getMovesAllowed: getLatchCubeMovesAllowed,
 };
 
-export const LatchCube = ({
-  cubeState,
-  perspective,
-  onChange,
-}: Omit<ICubeProps, "texture">) => (
+export const LatchCube = React.forwardRef<
+  ICubeHandle,
+  Omit<ICubeProps, "texture">
+>(({ cubeState, perspective, onChange }, forwardRef) => (
   <RubiksCube
+    ref={forwardRef}
     {...{
       cubeState,
       texture,
@@ -56,4 +67,4 @@ export const LatchCube = ({
       onChange,
     }}
   />
-);
+));

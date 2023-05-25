@@ -36,16 +36,14 @@ function App() {
   const permaLink = parsed?.[1] ?? params.get("config");
 
   return (
-    <>
-      <div style={{ minHeight: "100vh" }}>
-        <Flex row width="100vw">
-          <CubeController permaLink={permaLink} onSaveClick={onSaveClick}>
-            <RubiksCube />
-            <CubeStorage />
-          </CubeController>
-        </Flex>
-      </div>
-    </>
+    <div style={{ minHeight: "100vh" }}>
+      <Flex row width="100vw">
+        <CubeController permaLink={permaLink} onSaveClick={onSaveClick}>
+          <RubiksCube />
+          <CubeStorage />
+        </CubeController>
+      </Flex>
+    </div>
   );
 }
 

@@ -1,5 +1,6 @@
 import React from "react";
 import isEqual from "lodash/isEqual";
+import { createHandle } from "../component-utils";
 import { ICubeCharacteristic } from "../cube-characteristics";
 import { useControlledState } from "../hooks";
 import defaultTexture from "../images/rubiks-cube.png";
@@ -139,7 +140,6 @@ export interface ICubeProps {
 
 export interface ICubeHandle {
   cubeState: TCubeState;
-  change: (cubeState: TCubeState) => void;
 }
 
 export const RubiksCube = React.forwardRef<ICubeHandle, ICubeProps>(
@@ -153,6 +153,7 @@ export const RubiksCube = React.forwardRef<ICubeHandle, ICubeProps>(
     },
     forwardRef
   ) => {
+    // allow both controlled and uncontrolled input.
     const [cubeState, setCubeState] = useControlledState(
       defaultState,
       cubeStateProp
@@ -197,16 +198,16 @@ export const RubiksCube = React.forwardRef<ICubeHandle, ICubeProps>(
       setCubeState(newState);
     };
 
+    // add imperative api for uncontrolled input.
     React.useImperativeHandle(
       forwardRef,
-      () => ({
-        cubeState,
-        change: (cubeState) => {
-          onChange?.(cubeState);
-          setCubeState(cubeState);
-        },
-      }),
-      [cubeState, onChange]
+      () =>
+        createHandle<ICubeHandle>({
+          valueKey: "cubeState",
+          value: cubeState,
+          setValue: setCubeState,
+        }),
+      [cubeState]
     );
 
     const perspective = perspectives[perspectiveType];
