@@ -1,4 +1,4 @@
-import React from "react";
+import React, { PointerEventHandler } from "react";
 import { rotationMap } from "../rubiks-cube/rotationMap";
 import { faceInfo } from "../rubiks-cube/spatial-util";
 
@@ -11,6 +11,8 @@ interface IFaceProps {
   centerRotation?: number;
   onLeftClick?: TOnClick;
   onRightClick?: TOnClick;
+  onSwipeU?: (faceIndex: number, uDirection: number, vPoint: number) => void;
+  onSwipeV?: (faceIndex: number, uPoint: number, vDirection: number) => void;
 }
 
 export const STICKER_SIZE = 100;
@@ -23,8 +25,74 @@ export const Face = ({
   centerRotation = 0,
   onLeftClick,
   onRightClick,
+  onSwipeU,
+  onSwipeV,
 }: IFaceProps) => {
   const elements: JSX.Element[] = [];
+
+  const pointerEvents: Array<[number, number, number]> = [];
+
+  const addPointerEvent = (faceIndex: number, u: number, v: number) => {
+    const last = pointerEvents.at(-1);
+    if (last && last[0] === faceIndex && last[1] === u && last[2] === v) {
+      return;
+    }
+    pointerEvents.push([faceIndex, u, v]);
+    if (pointerEvents.length > 2) {
+      pointerEvents.shift();
+    }
+  };
+
+  const onPointerDownFactory =
+    (
+      faceIndex: number,
+      u: number,
+      v: number
+    ): PointerEventHandler<SVGSVGElement> =>
+    (e) => {
+      pointerEvents.splice(0, Number.POSITIVE_INFINITY);
+      addPointerEvent(faceIndex, u, v);
+    };
+
+  const onPointerEnterFactory =
+    (
+      faceIndex: number,
+      u: number,
+      v: number
+    ): PointerEventHandler<SVGSVGElement> =>
+    (e) => {
+      if (e.buttons !== 1) {
+        return;
+      }
+      addPointerEvent(faceIndex, u, v);
+    };
+
+  const onPointerUpFactory =
+    (
+      faceIndex: number,
+      u: number,
+      v: number
+    ): PointerEventHandler<SVGSVGElement> =>
+    (e) => {
+      addPointerEvent(faceIndex, u, v);
+      if (pointerEvents.length < 2) {
+        return;
+      }
+      const [a, b] = pointerEvents;
+      pointerEvents.splice(0, Number.POSITIVE_INFINITY);
+      if (!onSwipeU && !onSwipeV) {
+        return;
+      }
+      if (a[0] !== b[0] || (b[1] - a[1] !== 0 && b[2] - a[2] !== 0)) {
+        return;
+      }
+      const normalizedU = Math.sign(b[1] - a[1]);
+      const normalizedV = Math.sign(b[2] - a[2]);
+
+      normalizedV === 0
+        ? onSwipeU?.(faceIndex, normalizedU, a[2])
+        : onSwipeV?.(faceIndex, a[1], normalizedV);
+    };
 
   face.forEach((el, i) => {
     const u = (el % 9) % 3;
@@ -54,6 +122,21 @@ export const Face = ({
           e.preventDefault();
           onRightClick?.(faceIndex, (i % 3) - 1, Math.floor(i / 3) - 1);
         }}
+        onPointerDown={onPointerDownFactory(
+          faceIndex,
+          (i % 3) - 1,
+          Math.floor(i / 3) - 1
+        )}
+        onPointerEnter={onPointerEnterFactory(
+          faceIndex,
+          (i % 3) - 1,
+          Math.floor(i / 3) - 1
+        )}
+        onPointerUp={onPointerUpFactory(
+          faceIndex,
+          (i % 3) - 1,
+          Math.floor(i / 3) - 1
+        )}
       >
         <svg
           x={-STICKER_SIZE / 2}

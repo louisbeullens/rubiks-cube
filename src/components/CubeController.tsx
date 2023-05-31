@@ -2,6 +2,12 @@ import React from "react";
 import { getCubeCharacteristicsByType } from "../cube-characteristics";
 import { useLatestRef } from "../hooks";
 import { defaultState } from "../rubiks-cube/cube-util";
+import fundamentalOperations from "../rubiks-cube/fundamentalOperations";
+import {
+  createOperationMap,
+  initOperationMap,
+  operate,
+} from "../rubiks-cube/operation-util";
 import { TCubeState } from "../rubiks-cube/types";
 import { deserializeCube } from "../storage-utils";
 import { clone } from "../utils";
@@ -28,6 +34,59 @@ export interface ICubeControlProps {
   onSaveClick?: (data: IStorageData) => void;
   children?: React.ReactElement | React.ReactElement[];
 }
+
+const operations = initOperationMap(createOperationMap(fundamentalOperations));
+
+const swipeMap: Record<string, string> = {
+  "u:0:-1:-1": "B",
+  "v:0:-1:-1": "L'",
+  "u:0:-1:1": "F'",
+  "v:0:-1:1": "L",
+  "u:0:1:-1": "B'",
+  "v:0:1:-1": "R",
+  "u:0:1:1": "F",
+  "v:0:1:1": "R'",
+  "u:1:-1:-1": "U",
+  "v:1:-1:-1": "B'",
+  "u:1:-1:1": "D'",
+  "v:1:-1:1": "B",
+  "u:1:1:-1": "U'",
+  "v:1:1:-1": "F",
+  "u:1:1:1": "D",
+  "v:1:1:1": "F'",
+  "u:2:-1:-1": "U",
+  "v:2:-1:-1": "L'",
+  "u:2:-1:1": "D'",
+  "v:2:-1:1": "L",
+  "u:2:1:-1": "U'",
+  "v:2:1:-1": "R",
+  "u:2:1:1": "D",
+  "v:2:1:1": "R'",
+  "u:3:-1:-1": "U",
+  "v:3:-1:-1": "F'",
+  "u:3:-1:1": "D'",
+  "v:3:-1:1": "F",
+  "u:3:1:-1": "U'",
+  "v:3:1:-1": "B",
+  "u:3:1:1": "D",
+  "v:3:1:1": "B'",
+  "u:4:-1:-1": "U",
+  "v:4:-1:-1": "R'",
+  "u:4:-1:1": "D'",
+  "v:4:-1:1": "R",
+  "u:4:1:-1": "U'",
+  "v:4:1:-1": "L",
+  "u:4:1:1": "D",
+  "v:4:1:1": "L'",
+  "u:5:-1:-1": "F",
+  "v:5:-1:-1": "L'",
+  "u:5:-1:1": "B'",
+  "v:5:-1:1": "L",
+  "u:5:1:-1": "F'",
+  "v:5:1:-1": "R",
+  "u:5:1:1": "B",
+  "v:5:1:1": "R'",
+};
 
 export const CubeController = ({
   cubeRef,
@@ -152,6 +211,10 @@ export const CubeController = ({
     loadConfig(data);
   };
 
+  const movesAllowed = cubeRef
+    ? getMovesAllowed(state)
+    : characteristic.getMovesAllowed(state);
+
   const onCubeChange = (state: TCubeState) => {
     if (!editableRef.current) {
       return;
@@ -160,16 +223,35 @@ export const CubeController = ({
     setState(state);
   };
 
-  const onMoveButtonClick = (state: TCubeState) => {
-    if (cubeRef?.current) {
-      cubeRef.current.cubeState = state;
-    }
-    setState(state);
-  };
+  const onCubeSwipeFactory =
+    (uOrV: string) => (faceIndex: number, u: number, v: number) => {
+      console.log({ uOrV, faceIndex, u, v });
 
-  // const onSolveClickInternal = () => {
-  //
-  // };
+      const key = `${uOrV}:${faceIndex}:${u}:${v}`;
+      if (!(key in swipeMap)) {
+        return;
+      }
+      const move = swipeMap[key];
+      if (!(move in movesAllowed) || movesAllowed[move] === false) {
+        return;
+      }
+      const newState = operate(operations, state, move);
+      if (cubeRef?.current) {
+        cubeRef.current.cubeState = newState;
+      }
+      setState(newState);
+    };
+
+  const onMoveButtonClick = (move: string) => {
+    if (!(move in operations) || operations[move] === false) {
+      return;
+    }
+    const newState = operate(operations, state, move);
+    if (cubeRef?.current) {
+      cubeRef.current.cubeState = newState;
+    }
+    setState(newState);
+  };
 
   const onStorageChange = (item?: IStorageData) => {
     if (!autoStorageRef.current || !item) {
@@ -190,6 +272,8 @@ export const CubeController = ({
         texture={characteristic.texture}
         perspective={perspective}
         onChange={onCubeChange}
+        onSwipeU={onCubeSwipeFactory("u")}
+        onSwipeV={onCubeSwipeFactory("v")}
       />
     );
   };
@@ -224,9 +308,7 @@ export const CubeController = ({
           <MoveButtons
             state={state}
             onClick={onMoveButtonClick}
-            getMovesAllowed={
-              cubeRef ? getMovesAllowed : characteristic.getMovesAllowed
-            }
+            movesAllowed={movesAllowed}
           />
         </Flex>
         <Flex grow={999} column>

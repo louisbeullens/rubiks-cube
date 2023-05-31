@@ -145,6 +145,8 @@ export interface ICubeProps {
   perspective?: EPerspective;
   scale?: number;
   onChange?: (cubeState: TCubeState) => void;
+  onSwipeU?: (faceIndex: number, uDirection: number, vPoint: number) => void;
+  onSwipeV?: (faceIndex: number, uPoint: number, vDirection: number) => void;
 }
 
 export interface ICubeHandle {
@@ -159,6 +161,8 @@ export const RubiksCube = React.forwardRef<ICubeHandle, ICubeProps>(
       perspective: perspectiveType = EPerspective.UNFOLDED,
       scale = 0.5,
       onChange,
+      onSwipeU,
+      onSwipeV,
     },
     forwardRef
   ) => {
@@ -242,6 +246,8 @@ export const RubiksCube = React.forwardRef<ICubeHandle, ICubeProps>(
             )}
             onLeftClick={onLeftClick}
             onRightClick={onRightClick}
+            onSwipeU={onSwipeU}
+            onSwipeV={onSwipeV}
           />
         </g>
       );

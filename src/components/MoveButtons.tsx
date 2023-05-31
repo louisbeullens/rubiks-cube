@@ -1,40 +1,25 @@
-import React from "react";
-import { defaultState } from "../rubiks-cube/cube-util";
-import fundamentalOperations from "../rubiks-cube/fundamentalOperations";
-import {
-  createOperationMap,
-  initOperationMap,
-  operate,
-} from "../rubiks-cube/operation-util";
 import { TCubeState } from "../rubiks-cube/types";
 import { Flex } from "./Flex";
 
 interface IMoveButtonsProps {
   state: TCubeState;
-  onClick?: (newState: TCubeState, move: string) => void;
-  getMovesAllowed: (state: TCubeState) => Record<string, boolean>;
+  movesAllowed: Record<string, boolean>;
+  onClick?: (move: string) => void;
 }
 
 export const MoveButtons = ({
   state: stateProp,
+  movesAllowed,
   onClick,
-  getMovesAllowed,
 }: IMoveButtonsProps) => {
-  const operationsRef = React.useRef(
-    initOperationMap(createOperationMap(fundamentalOperations), defaultState)
-  );
-
   // internal buttonClick handler
   const onMoveButtonClickInternal = (move: string) => {
-    onClick?.(
-      operate(operationsRef.current, stateProp, move, defaultState),
-      move
-    );
+    onClick?.(move);
   };
 
   return (
     <>
-      {Object.entries(getMovesAllowed(stateProp))
+      {Object.entries(movesAllowed)
         .map((el, i, arr) => arr.slice(i, i + 3))
         .filter((el, i) => i % 3 === 0)
         .map((group, i) => (
