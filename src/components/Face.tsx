@@ -1,4 +1,3 @@
-import React, { PointerEventHandler } from "react";
 import { rotationMap } from "../rubiks-cube/rotationMap";
 import { faceInfo } from "../rubiks-cube/spatial-util";
 
@@ -44,36 +43,24 @@ export const Face = ({
   };
 
   const onPointerDownFactory =
-    (
-      faceIndex: number,
-      u: number,
-      v: number
-    ): PointerEventHandler<SVGSVGElement> =>
-    (e) => {
+    (faceIndex: number, u: number, v: number): ((e: any) => void) =>
+    () => {
       pointerEvents.splice(0, Number.POSITIVE_INFINITY);
       addPointerEvent(faceIndex, u, v);
     };
 
   const onPointerEnterFactory =
-    (
-      faceIndex: number,
-      u: number,
-      v: number
-    ): PointerEventHandler<SVGSVGElement> =>
-    (e) => {
-      if (e.buttons !== 1) {
+    (faceIndex: number, u: number, v: number): ((e: any) => void) =>
+    (e: { buttons?: number }) => {
+      if (e.buttons === 0) {
         return;
       }
       addPointerEvent(faceIndex, u, v);
     };
 
   const onPointerUpFactory =
-    (
-      faceIndex: number,
-      u: number,
-      v: number
-    ): PointerEventHandler<SVGSVGElement> =>
-    (e) => {
+    (faceIndex: number, u: number, v: number): ((e: any) => void) =>
+    () => {
       addPointerEvent(faceIndex, u, v);
       if (pointerEvents.length < 2) {
         return;
@@ -122,6 +109,21 @@ export const Face = ({
           e.preventDefault();
           onRightClick?.(faceIndex, (i % 3) - 1, Math.floor(i / 3) - 1);
         }}
+        onMouseDown={onPointerDownFactory(
+          faceIndex,
+          (i % 3) - 1,
+          Math.floor(i / 3) - 1
+        )}
+        onMouseEnter={onPointerEnterFactory(
+          faceIndex,
+          (i % 3) - 1,
+          Math.floor(i / 3) - 1
+        )}
+        onMouseUp={onPointerUpFactory(
+          faceIndex,
+          (i % 3) - 1,
+          Math.floor(i / 3) - 1
+        )}
         onPointerDown={onPointerDownFactory(
           faceIndex,
           (i % 3) - 1,
@@ -133,6 +135,21 @@ export const Face = ({
           Math.floor(i / 3) - 1
         )}
         onPointerUp={onPointerUpFactory(
+          faceIndex,
+          (i % 3) - 1,
+          Math.floor(i / 3) - 1
+        )}
+        onTouchStart={onPointerDownFactory(
+          faceIndex,
+          (i % 3) - 1,
+          Math.floor(i / 3) - 1
+        )}
+        onTouchMove={onPointerEnterFactory(
+          faceIndex,
+          (i % 3) - 1,
+          Math.floor(i / 3) - 1
+        )}
+        onTouchEnd={onPointerUpFactory(
           faceIndex,
           (i % 3) - 1,
           Math.floor(i / 3) - 1

@@ -293,6 +293,18 @@ export const CubeController = ({
   return (
     <Flex grow column spaceBetween padding="0 1vw" gap="1rem">
       <div
+        // onClickCapture={(e) => {
+        //   e.preventDefault();
+        //   e.stopPropagation();
+        // }}
+        // onContextMenuCapture={(e) => {
+        //   e.preventDefault();
+        //   e.stopPropagation();
+        // }}
+        // onScrollCapture={(e) => {
+        //   e.preventDefault();
+        //   e.stopPropagation();
+        // }}
         style={{
           backgroundColor: "#FFFFFF",
           position: "sticky",
