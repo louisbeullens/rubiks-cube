@@ -56,6 +56,7 @@ export const useThree = (width: number, height: number, init?: TInitFn) => {
         renderer.render(sceneRef.current, cameraRef.current)
       );
       controls.enableZoom = false;
+      controls.enablePan = false;
     },
     []
   );

@@ -85,6 +85,7 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
         const texture = new Three.TextureLoader().load(textureProp, () => {
           render();
         });
+        texture.colorSpace = Three.LinearSRGBColorSpace;
 
         const material = new Three.MeshBasicMaterial({ map: texture });
 
