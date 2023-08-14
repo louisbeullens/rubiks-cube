@@ -162,7 +162,7 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
           quarterTurns: number = 1,
           counterClockWise: boolean = false
         ) => {
-          const steps = 100;
+          const steps = 50;
 
           const axis = faceInfo[faceIndex].axis;
           const vAxis = (axes as any)[axis] as THREE.Vector3;
