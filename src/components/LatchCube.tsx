@@ -5,13 +5,8 @@ import { stateToCube } from "../rubiks-cube/cube-util";
 import latchCubies from "../rubiks-cube/latchCubies";
 import { faceNames } from "../rubiks-cube/spatial-util";
 import { TCubeState } from "../rubiks-cube/types";
-import {
-  getRubiksCubeMovesAllowed,
-  ICubeHandle,
-  ICubeProps,
-  RubiksCube,
-} from "./RubiksCube";
-import { ECubeType } from "./RubiksCube.types";
+import { getRubiksCubeMovesAllowed, RubiksCube } from "./RubiksCube";
+import { ECubeType, ICubeHandle, ICubeProps } from "./RubiksCube.types";
 
 const directions: Record<string, 1 | undefined | -1> = {
   "": 1,

@@ -19,12 +19,8 @@ import {
 } from "./CubeStorage.types";
 import { Flex } from "./Flex";
 import { MoveButtons } from "./MoveButtons";
-import {
-  getRubiksCubeMovesAllowed,
-  ICubeHandle,
-  RubiksCube,
-} from "./RubiksCube";
-import { ECubeType, EPerspective } from "./RubiksCube.types";
+import { getRubiksCubeMovesAllowed, RubiksCube } from "./RubiksCube";
+import { ECubeType, EPerspective, ICubeHandle } from "./RubiksCube.types";
 
 export interface ICubeControlProps {
   cubeRef?: React.RefObject<ICubeHandle>;
@@ -225,8 +221,6 @@ export const CubeController = ({
 
   const onCubeSwipeFactory =
     (uOrV: string) => (faceIndex: number, u: number, v: number) => {
-      console.log({ uOrV, faceIndex, u, v });
-
       const key = `${uOrV}:${faceIndex}:${u}:${v}`;
       if (!(key in swipeMap)) {
         return;
@@ -339,6 +333,7 @@ export const CubeController = ({
               >
                 <option value={EPerspective.UNFOLDED}>unfold</option>
                 <option value={EPerspective.ISOMETRIC}>isometric</option>
+                <option value={EPerspective.THREE_DIMENSIONAL}>3D</option>
               </select>
             </Flex>
             <Flex row>

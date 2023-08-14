@@ -1,12 +1,8 @@
 import React from "react";
 import { ICubeCharacteristic } from "../cube-characteristics";
 import texture from "../images/earth-cube.png";
-import {
-  getRubiksCubeMovesAllowed,
-  ICubeProps,
-  RubiksCube,
-} from "./RubiksCube";
-import { ECubeType } from "./RubiksCube.types";
+import { getRubiksCubeMovesAllowed, RubiksCube } from "./RubiksCube";
+import { ECubeType, ICubeProps } from "./RubiksCube.types";
 
 export const earthCubeCharacteristic: ICubeCharacteristic = {
   name: "Earth Cube",

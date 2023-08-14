@@ -1,9 +1,10 @@
+import { DragEventHandler, PointerEventHandler } from "react";
 import { rotationMap } from "../rubiks-cube/rotationMap";
 import { faceInfo } from "../rubiks-cube/spatial-util";
 
 type TOnClick = (faceIndex: number, u: number, v: number) => void;
 
-interface IFaceProps {
+interface ISVGFaceProps {
   faceIndex: number;
   face: number[];
   texturePath: string;
@@ -17,7 +18,7 @@ interface IFaceProps {
 export const STICKER_SIZE = 100;
 export const FACE_SIZE = STICKER_SIZE * 3;
 
-export const Face = ({
+export const SVGFace = ({
   faceIndex,
   face,
   texturePath,
@@ -26,7 +27,7 @@ export const Face = ({
   onRightClick,
   onSwipeU,
   onSwipeV,
-}: IFaceProps) => {
+}: ISVGFaceProps) => {
   const elements: JSX.Element[] = [];
 
   const pointerEvents: Array<[number, number, number]> = [];
@@ -34,34 +35,59 @@ export const Face = ({
   const addPointerEvent = (faceIndex: number, u: number, v: number) => {
     const last = pointerEvents.at(-1);
     if (last && last[0] === faceIndex && last[1] === u && last[2] === v) {
-      return;
+      return false;
     }
     pointerEvents.push([faceIndex, u, v]);
     if (pointerEvents.length > 2) {
       pointerEvents.shift();
     }
+    return true;
   };
 
   const onPointerDownFactory =
-    (faceIndex: number, u: number, v: number): ((e: any) => void) =>
+    (
+      faceIndex: number,
+      u: number,
+      v: number
+    ): PointerEventHandler<SVGGElement> =>
     () => {
+      // if (!e.changedTouches) {
+      //   return;
+      // }
       pointerEvents.splice(0, Number.POSITIVE_INFINITY);
-      addPointerEvent(faceIndex, u, v);
+      if (addPointerEvent(faceIndex, u, v)) {
+        // console.log("TOUCH START");
+        // console.log({ faceIndex, u, v });
+      }
     };
 
   const onPointerEnterFactory =
-    (faceIndex: number, u: number, v: number): ((e: any) => void) =>
-    (e: { buttons?: number }) => {
+    (
+      faceIndex: number,
+      u: number,
+      v: number
+    ): PointerEventHandler<SVGGElement> =>
+    (e) => {
       if (e.buttons === 0) {
         return;
       }
-      addPointerEvent(faceIndex, u, v);
+      if (addPointerEvent(faceIndex, u, v)) {
+        // console.log("POINTER ENTER");
+        // console.log({ faceIndex, u, v });
+      }
     };
 
   const onPointerUpFactory =
-    (faceIndex: number, u: number, v: number): ((e: any) => void) =>
+    (
+      faceIndex: number,
+      u: number,
+      v: number
+    ): PointerEventHandler<SVGGElement> =>
     () => {
-      addPointerEvent(faceIndex, u, v);
+      if (addPointerEvent(faceIndex, u, v)) {
+        // console.log("POINTER UP");
+        // console.log({ faceIndex, u, v });
+      }
       if (pointerEvents.length < 2) {
         return;
       }
@@ -81,11 +107,33 @@ export const Face = ({
         : onSwipeV?.(faceIndex, a[1], normalizedV);
     };
 
-  face.forEach((el, i) => {
-    const u = (el % 9) % 3;
-    const v = Math.floor((el % 9) / 3);
+  const onDragStartFactory =
+    (faceIndex: number, u: number, v: number): DragEventHandler<SVGGElement> =>
+    (e) => {
+      const { dataTransfer } = e;
+      dataTransfer.effectAllowed = "move";
+      dataTransfer.dropEffect = "move";
+      dataTransfer.setData(
+        "application/json",
+        JSON.stringify([faceIndex, u, v])
+      );
+    };
 
-    const stickerFaceIndex = Math.floor(el / 9);
+  const onDropFactory =
+    (faceIndex: number, u: number, v: number): DragEventHandler<SVGGElement> =>
+    (e) => {
+      const { dataTransfer } = e;
+      const [startFaceIndex, startU, startV] = JSON.parse(
+        dataTransfer.getData("application/json")
+      );
+      console.log({ startFaceIndex, startU, startV, faceIndex, u, v });
+    };
+
+  face.forEach((el, i) => {
+    const u = i === 4 ? 1 : (el % 9) % 3;
+    const v = i === 4 ? 1 : Math.floor((el % 9) / 3);
+
+    const stickerFaceIndex = Math.floor(el / 9) % 6;
     const { textureU, textureV } = faceInfo[stickerFaceIndex];
 
     const svgX = ((i % 3) + 0.5) * STICKER_SIZE;
@@ -98,62 +146,28 @@ export const Face = ({
         ? centerRotation
         : (rotationMap as any)[stickerFaceIndex * 9 + i][el];
 
+    const handlerArgs: [number, number, number] = [
+      faceIndex,
+      (i % 3) - 1,
+      Math.floor(i / 3) - 1,
+    ];
+
     elements.push(
       <g
         key={i}
         transform={` translate(${svgX} ${svgY}) rotate(${rotation * 90})`}
-        onClick={() =>
-          onLeftClick?.(faceIndex, (i % 3) - 1, Math.floor(i / 3) - 1)
-        }
+        onClick={() => onLeftClick?.(...handlerArgs)}
         onContextMenuCapture={(e) => {
           e.preventDefault();
-          onRightClick?.(faceIndex, (i % 3) - 1, Math.floor(i / 3) - 1);
+          onRightClick?.(...handlerArgs);
         }}
-        onMouseDown={onPointerDownFactory(
-          faceIndex,
-          (i % 3) - 1,
-          Math.floor(i / 3) - 1
-        )}
-        onMouseEnter={onPointerEnterFactory(
-          faceIndex,
-          (i % 3) - 1,
-          Math.floor(i / 3) - 1
-        )}
-        onMouseUp={onPointerUpFactory(
-          faceIndex,
-          (i % 3) - 1,
-          Math.floor(i / 3) - 1
-        )}
-        onPointerDown={onPointerDownFactory(
-          faceIndex,
-          (i % 3) - 1,
-          Math.floor(i / 3) - 1
-        )}
-        onPointerEnter={onPointerEnterFactory(
-          faceIndex,
-          (i % 3) - 1,
-          Math.floor(i / 3) - 1
-        )}
-        onPointerUp={onPointerUpFactory(
-          faceIndex,
-          (i % 3) - 1,
-          Math.floor(i / 3) - 1
-        )}
-        onTouchStart={onPointerDownFactory(
-          faceIndex,
-          (i % 3) - 1,
-          Math.floor(i / 3) - 1
-        )}
-        onTouchMove={onPointerEnterFactory(
-          faceIndex,
-          (i % 3) - 1,
-          Math.floor(i / 3) - 1
-        )}
-        onTouchEnd={onPointerUpFactory(
-          faceIndex,
-          (i % 3) - 1,
-          Math.floor(i / 3) - 1
-        )}
+        onPointerDown={onPointerDownFactory(...handlerArgs)}
+        onPointerEnter={onPointerEnterFactory(...handlerArgs)}
+        onPointerUp={onPointerUpFactory(...handlerArgs)}
+        // // @ts-ignore
+        // draggable
+        // onDragStart={onDragStartFactory(...handlerArgs)}
+        // onDrop={onDropFactory(...handlerArgs)}
       >
         <svg
           x={-STICKER_SIZE / 2}
