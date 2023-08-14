@@ -1,6 +1,7 @@
 import React, { forwardRef } from "react";
 import EventEmitter from "events";
 import * as Three from "three";
+import { useLatestRef } from "../hooks";
 import { TInitFn, TOnAnimateFn, useThree } from "../hooks/useThree";
 import defaultTexture from "../images/rubiks-cube.png";
 import {
@@ -61,37 +62,22 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
     { cubeState = defaultState, texture: textureProp = defaultTexture },
     forwardRef
   ) => {
-    const cubeRef = React.useRef(stateToCube(cubeState));
+    const cubeStateRef = useLatestRef(cubeState);
+
+    const cubeRef = React.useRef(stateToCube(cubeStateRef.current));
 
     const [rotationQueue] = React.useState<TRotationQueue>([]);
     const [dispatcher] = React.useState(new EventEmitter());
-    const [commandQueue] = React.useState<TCommandQueue>([]);
 
     const cubeControlsRef = React.useRef<Partial<ICubeControls>>({});
 
-    // const rotateLeft = (...args: Parameters<TRotateFaceFn>) =>
-    //   cubeControlsRef.current.rotateLeft?.(...args);
-    // const rotateRight = (...args: Parameters<TRotateFaceFn>) =>
-    //   cubeControlsRef.current.rotateRight?.(...args);
-    // const rotateDown = (...args: Parameters<TRotateFaceFn>) =>
-    //   cubeControlsRef.current.rotateDown?.(...args);
-    // const rotateUp = (...args: Parameters<TRotateFaceFn>) =>
-    //   cubeControlsRef.current.rotateUp?.(...args);
-    // const rotateBack = (...args: Parameters<TRotateFaceFn>) =>
-    //   cubeControlsRef.current.rotateBack?.(...args);
-    // const rotateFront = (...args: Parameters<TRotateFaceFn>) =>
-    //   cubeControlsRef.current.rotateFront?.(...args);
-
     const init: TInitFn = React.useCallback(
       ({ scene, camera, controls, render }) => {
-        const tmpCubeState = cubeToState(cubeRef.current);
-
         camera.position.x = 4;
         camera.position.y = 4;
         camera.position.z = 4;
         camera.updateProjectionMatrix();
         controls?.update();
-        commandQueue.splice(0);
         rotationQueue.splice(0);
         scene.clear();
         scene.background = new Three.Color(0xffffff);
@@ -107,7 +93,7 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
           for (let y = -1; y <= 1; y++) {
             for (let z = -1; z <= 1; z++) {
               const cube = new Three.Mesh(
-                new CubieGeometry({ x, y, z }, tmpCubeState),
+                new CubieGeometry({ x, y, z }, cubeStateRef.current),
                 material
               );
               scene.add(cube);
@@ -208,7 +194,7 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
           onAnimate,
         };
       },
-      [rotationQueue, commandQueue, dispatcher, textureProp]
+      [rotationQueue, dispatcher, textureProp]
     );
 
     React.useEffect(() => {
@@ -222,7 +208,6 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
       if (!operation) {
         return;
       }
-      console.log(operation);
       const [operationName] = operation;
       if (!(operationName in rotateParams)) {
         return;
