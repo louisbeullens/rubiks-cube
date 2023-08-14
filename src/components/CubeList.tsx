@@ -3,6 +3,7 @@ import { getCubeCharacteristicsByType } from "../cube-characteristics";
 import { AbstractList, IListProps, IRenderItemProps } from "./AbstractList";
 import { IStorageData } from "./CubeStorage.types";
 import RubiksCube from "./RubiksCube";
+import { EPerspective } from "./RubiksCube.types";
 
 const size = "25px";
 const itemPosition = "relative" as const;
@@ -31,7 +32,14 @@ const renderItem = ({
   return (
     <div {...{ style }}>
       <span {...{ onClick }}>
-        <RubiksCube {...{ cubeState, perspective, texture, scale: 0.25 }} />
+        <RubiksCube
+          {...{ cubeState, texture, scale: 0.25 }}
+          perspective={
+            perspective === EPerspective.THREE_DIMENSIONAL
+              ? EPerspective.ISOMETRIC
+              : perspective
+          }
+        />
       </span>
       <button style={removeButtonStyle} onClick={onRemove}>
         -
