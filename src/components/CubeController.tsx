@@ -120,7 +120,6 @@ export const CubeController = ({
 
   const storageRef = React.useRef<ICubeStorageHandle>(null);
 
-  const perspectiveRef = useLatestRef(perspective);
   const autoStorageRef = useLatestRef(autoStorage);
   const editableRef = useLatestRef(editable);
 
@@ -191,7 +190,7 @@ export const CubeController = ({
   const onSaveClickInternal = () => {
     const newState = clone(state);
     const data = {
-      perspective: perspectiveRef.current,
+      perspective,
       type: characteristic.type,
       state: newState,
     };

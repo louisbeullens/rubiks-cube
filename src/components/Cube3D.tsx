@@ -73,9 +73,9 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
 
     const init: TInitFn = React.useCallback(
       ({ scene, camera, controls, render }) => {
-        camera.position.x = 4;
-        camera.position.y = 4;
-        camera.position.z = 4;
+        camera.position.x = 2.5;
+        camera.position.y = 2.5;
+        camera.position.z = 2.5;
         camera.updateProjectionMatrix();
         controls?.update();
         rotationQueue.splice(0);
