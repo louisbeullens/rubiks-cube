@@ -78,7 +78,7 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
         scene.clear();
         scene.background = new Three.Color(0xffffff);
 
-        scene.add(new Three.AxesHelper(3));
+        // scene.add(new Three.AxesHelper(3));
 
         const texture = new Three.TextureLoader().load(textureProp, () => {
           render();
@@ -141,12 +141,20 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
           group.removeFromParent();
         };
 
+        let isRotating = false;
         const rotate = (
           faceIndex: number = faceNames.U,
           quarterTurns: number = 1,
           counterClockWise: boolean = false
         ) => {
-          const steps = 50;
+          if (isRotating) {
+            dispatcher.once("finishRotation", () => {
+              rotate(faceIndex, quarterTurns, counterClockWise);
+            });
+            return;
+          }
+          isRotating = true;
+          const steps = 25;
 
           const axis = faceInfo[faceIndex].axis;
           const vAxis = (axes as any)[axis] as THREE.Vector3;
@@ -165,7 +173,10 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
 
           // wait for animation loop finished
           return new Promise<void>((resolve) => {
-            dispatcher.once("finishRotation", resolve);
+            dispatcher.once("finishRotation", () => {
+              isRotating = false;
+              return resolve();
+            });
           });
         };
 
