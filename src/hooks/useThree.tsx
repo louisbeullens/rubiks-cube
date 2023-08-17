@@ -52,9 +52,14 @@ export const useThree = (width: number, height: number, init?: TInitFn) => {
         canvas
       ));
 
-      controls.addEventListener("change", () =>
-        renderer.render(sceneRef.current, cameraRef.current)
-      );
+      controls.addEventListener("change", () => {
+        renderer.render(sceneRef.current, cameraRef.current);
+        const right = new Three.Vector3(1, 0, 0);
+        const up = new Three.Vector3(0, 1, 0);
+        const near = new Three.Vector3(0, 0, 1);
+        const v = new Three.Vector3();
+        cameraRef.current.getWorldDirection(v);
+      });
       controls.enableZoom = false;
       controls.enablePan = false;
     },

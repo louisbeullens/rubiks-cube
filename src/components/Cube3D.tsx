@@ -1,14 +1,9 @@
-import React, { forwardRef } from "react";
+import React from "react";
 import EventEmitter from "events";
 import * as Three from "three";
-import { useLatestRef } from "../hooks";
 import { TInitFn, TOnAnimateFn, useThree } from "../hooks/useThree";
 import defaultTexture from "../images/rubiks-cube.png";
-import {
-  cubeToState,
-  defaultState,
-  stateToCube,
-} from "../rubiks-cube/cube-util";
+import { defaultState, stateToCube } from "../rubiks-cube/cube-util";
 import fundamentalOperations from "../rubiks-cube/fundamentalOperations";
 import {
   createOperationMap,
@@ -16,7 +11,7 @@ import {
   initOperationMap,
 } from "../rubiks-cube/operation-util";
 import { faceInfo, faceNames } from "../rubiks-cube/spatial-util";
-import { EFaceIndex } from "../rubiks-cube-old";
+import { TCubeState } from "../rubiks-cube/types";
 import { CubieGeometry } from "../threejs/CubieGeometry";
 import { ICubeHandle, ICubeProps } from "./RubiksCube.types";
 
@@ -26,7 +21,6 @@ type TRotateFaceFn = (
   counterClockWise: boolean
 ) => Promise<void> | undefined;
 type TRotationQueue = { axis: Three.Vector3; radian: number }[];
-type TCommandQueue = { command: string; undo: boolean }[];
 
 type TRotateParam = [number, number, boolean];
 
@@ -62,9 +56,11 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
     { cubeState = defaultState, texture: textureProp = defaultTexture },
     forwardRef
   ) => {
-    const cubeStateRef = useLatestRef(cubeState);
+    // store cube state for creating geometry
+    const [initialCubeState, setInitialCubeState] = React.useState(cubeState);
 
-    const cubeRef = React.useRef(stateToCube(cubeStateRef.current));
+    // store current cube
+    const cubeRef = React.useRef(stateToCube(initialCubeState));
 
     const [rotationQueue] = React.useState<TRotationQueue>([]);
     const [dispatcher] = React.useState(new EventEmitter());
@@ -82,10 +78,11 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
         scene.clear();
         scene.background = new Three.Color(0xffffff);
 
+        scene.add(new Three.AxesHelper(3));
+
         const texture = new Three.TextureLoader().load(textureProp, () => {
           render();
         });
-        texture.colorSpace = Three.LinearSRGBColorSpace;
 
         const material = new Three.MeshBasicMaterial({ map: texture });
 
@@ -94,7 +91,7 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
           for (let y = -1; y <= 1; y++) {
             for (let z = -1; z <= 1; z++) {
               const cube = new Three.Mesh(
-                new CubieGeometry({ x, y, z }, cubeStateRef.current),
+                new CubieGeometry({ x, y, z }, initialCubeState),
                 material
               );
               scene.add(cube);
@@ -195,25 +192,38 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
           onAnimate,
         };
       },
-      [rotationQueue, dispatcher, textureProp]
+      [rotationQueue, dispatcher, textureProp, initialCubeState]
     );
 
     React.useEffect(() => {
+      const initCube = (cubeState: TCubeState) => {
+        setInitialCubeState(cubeState);
+      };
+
+      // new cube
       const cubeB = stateToCube(cubeState);
+      // current cube
       const cubeA = cubeRef.current;
+      // always update current cube
+      cubeRef.current = cubeB;
+      // compare cubes find applied operation
       const operation = findOperationEntryByDifference(
         operations,
         cubeB,
         cubeA
       );
       if (!operation) {
+        // recreate cube geometry when operation not found
+        initCube(cubeState);
         return;
       }
       const [operationName] = operation;
       if (!(operationName in rotateParams)) {
+        // recreate cube geometry when imperative api for operation doesn't exists
+        initCube(cubeState);
         return;
       }
-      cubeRef.current = cubeB;
+      // animate changes
       cubeControlsRef.current.rotate?.(...rotateParams[operationName]);
     }, [cubeState]);
 

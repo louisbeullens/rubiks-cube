@@ -126,7 +126,7 @@ export const SVGFace = ({
       const [startFaceIndex, startU, startV] = JSON.parse(
         dataTransfer.getData("application/json")
       );
-      console.log({ startFaceIndex, startU, startV, faceIndex, u, v });
+      // console.log({ startFaceIndex, startU, startV, faceIndex, u, v });
     };
 
   face.forEach((el, i) => {

@@ -24,7 +24,6 @@ function App() {
 
   const onSaveClick = React.useCallback(
     (data: IStorageData) => {
-      console.log(data);
       const permaLink = serializeCube(data);
       setParams({ config: permaLink });
     },
