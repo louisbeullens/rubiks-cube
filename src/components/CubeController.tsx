@@ -331,7 +331,6 @@ export const CubeController = ({
                 style={inputStyle}
               >
                 <option value={EPerspective.UNFOLDED}>unfold</option>
-                <option value={EPerspective.ISOMETRIC}>isometric</option>
                 <option value={EPerspective.THREE_DIMENSIONAL}>3D</option>
               </select>
             </Flex>

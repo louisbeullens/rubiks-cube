@@ -8,8 +8,8 @@ export enum ECubeType {
 
 export enum EPerspective {
   UNFOLDED = 1,
-  ISOMETRIC = 2,
-  THREE_DIMENSIONAL = 3,
+  THREE_DIMENSIONAL = 2,
+  ISOMETRIC = 3,
 }
 
 export interface ICubeProps {

@@ -22,7 +22,7 @@ export const removeItem = (id: string) => {
 
 export const createNewItem = (characteristic: any): IStorageData => ({
   type: characteristic.type,
-  perspective: EPerspective.ISOMETRIC,
+  perspective: EPerspective.THREE_DIMENSIONAL,
   state: defaultState,
 });
 
