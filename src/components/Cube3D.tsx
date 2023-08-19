@@ -94,6 +94,8 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
         camera.position.x = distance;
         camera.position.y = distance;
         camera.position.z = distance;
+        camera.lookAt(new Three.Vector3(0, 0, 0));
+        camera.updateMatrix();
         camera.updateProjectionMatrix();
         setCameraInfo(getCameraInfo(camera));
 
@@ -102,7 +104,6 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
           if (debugActive) {
             scene.add((controls as any)._gizmos);
           }
-          // controls.enableZoom = false;
           controls.enablePan = false;
           controls.addEventListener("change", () => {
             setCameraInfo(getCameraInfo(camera));

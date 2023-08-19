@@ -52,6 +52,7 @@ export const useThree = (width: number, height: number, init?: TInitFn) => {
         canvas,
         sceneRef.current
       ));
+      controls.saveState();
 
       controls.addEventListener("change", () => {
         renderer.render(sceneRef.current, cameraRef.current);
