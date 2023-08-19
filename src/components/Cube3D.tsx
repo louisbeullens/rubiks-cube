@@ -91,6 +91,7 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
           scene.add(new Three.AxesHelper(distance));
         }
 
+        controls?.reset();
         camera.position.x = distance;
         camera.position.y = distance;
         camera.position.z = distance;
