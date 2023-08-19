@@ -10,6 +10,7 @@ import {
   rubiksCharacteristic,
   RubiksCube,
 } from "./components";
+import { setDebugActive } from "./config";
 import { registerCube } from "./cube-characteristics";
 import { serializeCube } from "./storage-utils";
 
@@ -34,6 +35,20 @@ function App() {
   const protocol = params.get("protocol") ?? "";
   const parsed = protocolRegexp.exec(protocol);
   const permaLink = parsed?.[1] ?? params.get("config");
+
+  const debug = params.get("debug");
+  switch (debug) {
+    case "":
+    case "1":
+    case "yes":
+    case "true":
+      setDebugActive(true);
+      break;
+    case "0":
+    case "no":
+    case "false":
+      setDebugActive(false);
+  }
 
   return (
     <div style={{ minHeight: "100vh" }}>

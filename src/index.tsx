@@ -2,8 +2,11 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
+import { initConfig } from "./config";
 import * as serviceWorkerRegistration from "./serviceWorkerRegistration";
 import "./index.css";
+
+initConfig();
 
 const root = ReactDOM.createRoot(
   document.getElementById("root") as HTMLElement

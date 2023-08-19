@@ -1,6 +1,7 @@
 import React from "react";
 import EventEmitter from "events";
 import * as Three from "three";
+import { isDebugActive } from "../config";
 import { TInitFn, TOnAnimateFn, useThree } from "../hooks/useThree";
 import defaultTexture from "../images/rubiks-cube.png";
 import { defaultState, stateToCube } from "../rubiks-cube/cube-util";
@@ -51,6 +52,12 @@ const rotateParams: Record<string, TRotateParam> = {
   "D'": [5, 1, false],
 };
 
+const getCameraInfo = (camera: Three.PerspectiveCamera) => ({
+  position: camera.position,
+  direction: camera.getWorldDirection(new Three.Vector3()),
+  rotationZ: camera.rotation.z,
+});
+
 export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
   (
     { cubeState = defaultState, texture: textureProp = defaultTexture },
@@ -65,20 +72,43 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
     const [rotationQueue] = React.useState<TRotationQueue>([]);
     const [dispatcher] = React.useState(new EventEmitter());
 
+    const [cameraInfo, setCameraInfo] = React.useState({
+      position: new Three.Vector3(),
+      direction: new Three.Vector3(),
+      rotationZ: 0,
+    });
+
     const cubeControlsRef = React.useRef<Partial<ICubeControls>>({});
 
     const init: TInitFn = React.useCallback(
       ({ scene, camera, controls, render }) => {
-        camera.position.x = 2.5;
-        camera.position.y = 2.5;
-        camera.position.z = 2.5;
-        camera.updateProjectionMatrix();
-        controls?.update();
-        rotationQueue.splice(0);
+        const debugActive = isDebugActive();
+        const distance = 2.5;
+
         scene.clear();
         scene.background = new Three.Color(0xffffff);
+        if (debugActive) {
+          scene.add(new Three.AxesHelper(distance));
+        }
 
-        // scene.add(new Three.AxesHelper(3));
+        camera.position.x = distance;
+        camera.position.y = distance;
+        camera.position.z = distance;
+        camera.updateProjectionMatrix();
+        setCameraInfo(getCameraInfo(camera));
+
+        if (controls) {
+          if (debugActive) {
+            scene.add((controls as any)._gizmos);
+          }
+          controls.enableZoom = false;
+          controls.enablePan = false;
+          controls.addEventListener("change", () => {
+            setCameraInfo(getCameraInfo(camera));
+          });
+          controls.update();
+        }
+        rotationQueue.splice(0);
 
         const texture = new Three.TextureLoader().load(textureProp, () => {
           render();
@@ -248,6 +278,37 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
 
     const { reactElement } = useThree(350, 275, init);
 
-    return reactElement;
+    return (
+      <div
+        style={{
+          position: "relative",
+        }}
+      >
+        {reactElement}
+        {isDebugActive() && (
+          <div
+            style={{
+              position: "absolute",
+              top: "0px",
+              left: "0px",
+              color: "red",
+              fontSize: "0.5rem",
+            }}
+          >
+            Camera position: ({Math.floor(10 * cameraInfo.position.x) / 10},{" "}
+            {Math.floor(10 * cameraInfo.position.y) / 10},{" "}
+            {Math.floor(10 * cameraInfo.position.z) / 10})
+            <br />
+            Camera direction: ({Math.floor(10 * cameraInfo.direction.x) /
+              10}, {Math.floor(10 * cameraInfo.direction.y) / 10},{" "}
+            {Math.floor(10 * cameraInfo.direction.z) / 10})
+            <br />
+            Camera rotation:{" "}
+            {Math.floor((180 * cameraInfo.rotationZ) / Math.PI)}
+            &deg;
+          </div>
+        )}
+      </div>
+    );
   }
 );
