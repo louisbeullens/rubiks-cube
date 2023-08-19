@@ -282,6 +282,7 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
       <div
         style={{
           position: "relative",
+          userSelect: "none",
         }}
       >
         {reactElement}
