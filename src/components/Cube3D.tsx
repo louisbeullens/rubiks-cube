@@ -98,10 +98,11 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
         setCameraInfo(getCameraInfo(camera));
 
         if (controls) {
+          controls.minDistance = 4.33;
           if (debugActive) {
             scene.add((controls as any)._gizmos);
           }
-          controls.enableZoom = false;
+          // controls.enableZoom = false;
           controls.enablePan = false;
           controls.addEventListener("change", () => {
             setCameraInfo(getCameraInfo(camera));
