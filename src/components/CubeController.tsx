@@ -316,7 +316,7 @@ export const CubeController = ({
             movesAllowed={movesAllowed}
           />
         </Flex>
-        <Flex grow={999} column>
+        <Flex grow={11} column>
           <Flex row wrap spaceAround>
             <Flex row>
               <button onClick={onLoadClickInternal}>Load</button>
