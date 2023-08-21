@@ -12,7 +12,6 @@ import {
   initOperationMap,
 } from "../rubiks-cube/operation-util";
 import { faceInfo, faceNames } from "../rubiks-cube/spatial-util";
-import { TCubeState } from "../rubiks-cube/types";
 import { CubieGeometry } from "../threejs/CubieGeometry";
 import { ICubeHandle, ICubeProps } from "./RubiksCube.types";
 
@@ -240,10 +239,6 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
     );
 
     React.useEffect(() => {
-      const initCube = (cubeState: TCubeState) => {
-        setInitialCubeState(cubeState);
-      };
-
       // new cube
       const cubeB = stateToCube(cubeState);
       // current cube
@@ -258,13 +253,13 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
       );
       if (!operation) {
         // recreate cube geometry when operation not found
-        initCube(cubeState);
+        setInitialCubeState(cubeState);
         return;
       }
       const [operationName] = operation;
       if (!(operationName in rotateParams)) {
         // recreate cube geometry when imperative api for operation doesn't exists
-        initCube(cubeState);
+        setInitialCubeState(cubeState);
         return;
       }
       // animate changes

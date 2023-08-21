@@ -2,10 +2,13 @@ import * as THREE from "three";
 import {
   defaultCube,
   defaultState,
+  getCorePermutation,
   stateToCube,
 } from "../rubiks-cube/cube-util";
 import { rotationMap } from "../rubiks-cube/rotationMap";
+import { coreOrientationMap } from "../rubiks-cube/rotationMap";
 import { faceInfo, point3DtoUv, uvToIndex } from "../rubiks-cube/spatial-util";
+import { mod4 } from "../utils";
 
 const ONE_TWELFTH = 1 / 12;
 const ONE_NINED = 1 / 9;
@@ -70,6 +73,10 @@ class CubieGeometry extends THREE.BufferGeometry {
         Math.abs(coordinate.z) ===
       1;
 
+    const corePermutation = getCorePermutation(cubeState);
+
+    const coreOrientation = coreOrientationMap[corePermutation];
+
     let numberOfVertices = 0;
     let groupStart = 0;
 
@@ -104,6 +111,34 @@ class CubieGeometry extends THREE.BufferGeometry {
 
       const face = point3DtoUv(coordinate, faceIndex);
 
+      const homeSticker = face
+        ? defaultCube[face.faceIndex][uvToIndex(face.u, face.v)]
+        : undefined;
+
+      const sticker = face
+        ? cube[face.faceIndex][uvToIndex(face.u, face.v)]
+        : undefined;
+
+      const rotation = face
+        ? isCenterCubie
+          ? mod4(coreOrientation[faceIndex], sticker % 9)
+          : rotationMap[homeSticker][sticker]
+        : 0;
+
+      const stickerFaceIndex = face ? Math.floor(sticker / 9) % 6 : undefined;
+
+      const stickerU = face
+        ? isCenterCubie
+          ? 1
+          : (sticker % 9) % 3
+        : undefined;
+
+      const stickerV = face
+        ? isCenterCubie
+          ? 1
+          : Math.floor((sticker % 9) / 3)
+        : undefined;
+
       // generate vertices, normals and uvs
 
       for (let iy = 0; iy < 2; iy++) {
@@ -134,37 +169,12 @@ class CubieGeometry extends THREE.BufferGeometry {
 
           // uvs
 
-          const homeSticker = face
-            ? defaultCube[face.faceIndex][uvToIndex(face.u, face.v)]
-            : undefined;
-          const sticker = face
-            ? cube[face.faceIndex][uvToIndex(face.u, face.v)]
-            : undefined;
-          const rotation = face
-            ? isCenterCubie
-              ? (sticker % 9) % 4
-              : rotationMap[homeSticker][sticker]
-            : 0;
-
-          const stickerFaceIndex = face
-            ? Math.floor(sticker / 9) % 6
-            : undefined;
-          const stickerU = face
-            ? isCenterCubie
-              ? 1
-              : (sticker % 9) % 3
-            : undefined;
-          const stickerV = face
-            ? isCenterCubie
-              ? 1
-              : Math.floor((sticker % 9) / 3)
-            : undefined;
-
           const u = face
             ? faceInfo[stickerFaceIndex].textureU * 3 +
               stickerU +
               uvRotationMap[rotation][2 * iy + ix][0]
             : ix;
+
           const v = face
             ? faceInfo[stickerFaceIndex].textureV * 3 +
               stickerV +
