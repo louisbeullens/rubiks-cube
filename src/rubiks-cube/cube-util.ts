@@ -1,8 +1,9 @@
 import coordinates from "./coordinates";
-import { getFacesOfPoint3D, uvToIndex } from "./spatial-util";
+import { getFacesOfPoint3D, IPoint3D, uvToIndex } from "./spatial-util";
 import rubikCubies from "./textureCubies";
+import { TCube, TCubeState, TCubies } from "./types";
 
-export function textToCube(text) {
+export function textToCube(text: string[]) {
   return [
     // U
     [
@@ -97,7 +98,7 @@ export function textToCube(text) {
   ];
 }
 
-export function cubeToText(cube) {
+export function cubeToText(cube: TCube) {
   return [
     "   " + cube[0].slice(0, 3).join(""),
     "   " + cube[0].slice(3, 6).join(""),
@@ -120,7 +121,7 @@ export function cubeToText(cube) {
   ];
 }
 
-function getCubieInfoByPosition(coordinate, cube) {
+function getCubieInfoByPosition(coordinate: IPoint3D, cube?: TCube) {
   const faces = getFacesOfPoint3D(coordinate);
 
   const primaryIndex = faces.findIndex(
@@ -174,14 +175,16 @@ function getCubieInfoByPosition(coordinate, cube) {
   };
 }
 
-export function createCubies(solvedCube, centerCubies) {
-  centerCubies = centerCubies ?? rubikCubies;
+export function createCubies(
+  solvedCube: TCube,
+  centerCubies: TCubies = rubikCubies
+) {
   const cubieEntries = Object.entries(centerCubies).map(([k, v]) => [
     Number(k),
     v,
-  ]);
+  ]) as [number, number[]][];
 
-  const cubies = {};
+  const cubies: TCubies = {};
 
   coordinates.slice(0, 12).forEach((coordinate, i) => {
     const { primaryColor, secondaryColor } = getCubieInfoByPosition(
@@ -189,8 +192,8 @@ export function createCubies(solvedCube, centerCubies) {
       solvedCube
     );
 
-    cubies[2 * i + 2] = [primaryColor, secondaryColor];
-    cubies[2 * i + 3] = [secondaryColor, primaryColor];
+    cubies[2 * i + 2] = [primaryColor!, secondaryColor!];
+    cubies[2 * i + 3] = [secondaryColor!, primaryColor!];
   });
 
   coordinates.slice(12, 20).forEach((coordinate, i) => {
@@ -199,35 +202,41 @@ export function createCubies(solvedCube, centerCubies) {
       solvedCube
     );
 
-    cubies[3 * i + 39] = [xColor, yColor, zColor];
+    cubies[3 * i + 39] = [xColor!, yColor!, zColor!];
     if (i % 2) {
-      cubies[3 * i + 40] = [yColor, zColor, xColor];
-      cubies[3 * i + 41] = [zColor, xColor, yColor];
+      cubies[3 * i + 40] = [yColor!, zColor!, xColor!];
+      cubies[3 * i + 41] = [zColor!, xColor!, yColor!];
     } else {
-      cubies[3 * i + 40] = [zColor, xColor, yColor];
-      cubies[3 * i + 41] = [yColor, zColor, xColor];
+      cubies[3 * i + 40] = [zColor!, xColor!, yColor!];
+      cubies[3 * i + 41] = [yColor!, zColor!, xColor!];
     }
   });
 
   for (let i = 0; i < 6; i++) {
     const [centerId] =
-      cubieEntries.find(([k, v]) => v === solvedCube[i][4]) ?? [];
+      cubieEntries.find(
+        ([k, v]) => v.length === 1 && v[0] === solvedCube[i][4]
+      ) ?? [];
     if (!centerId) {
       continue;
     }
     const base = Math.floor(centerId / 4);
     const orientation = centerId % 4;
     for (let j = 0; j < 4; j++) {
-      cubies[4 * i + 84 + j] = centerCubies[4 * base + ((orientation + j) % 4)];
+      cubies[4 * i + 84 + j] = [
+        centerCubies[4 * base + ((orientation + j) % 4)][0],
+      ];
     }
   }
 
   return cubies;
 }
 
-export function cubeToState(cube, cubies) {
-  cubies = cubies ?? rubikCubies;
-  const cubieEntries = Object.entries(cubies).map(([k, v]) => [Number(k), v]);
+export function cubeToState(cube: TCube, cubies: TCubies = rubikCubies) {
+  const cubieEntries = Object.entries(cubies).map(([k, v]) => [
+    Number(k),
+    v,
+  ]) as [number, number[]][];
 
   const state = Array.from({ length: 26 }, () => 0);
 
@@ -240,9 +249,10 @@ export function cubeToState(cube, cubies) {
       cube
     );
 
-    const [edgeId] = cubieEntries.find(
-      ([k, [a, b]]) => a === primaryColor && b === secondaryColor
-    );
+    const [edgeId] =
+      cubieEntries.find(
+        ([k, [a, b]]) => a === primaryColor && b === secondaryColor
+      ) ?? [];
     if (!edgeId) {
       throw new Error(
         `edge [${primaryColor},${secondaryColor}] does not exists.`
@@ -273,11 +283,12 @@ export function cubeToState(cube, cubies) {
   for (let i = 0; i < 8; i++) {
     const { xColor, yColor, zColor } = getCubieInfoByPosition(coordinate, cube);
 
-    const [cornerId] = cubieEntries.find(
-      ([k, [x, y, z]]) =>
-        z === zColor &&
-        ((x === xColor && y === yColor) || (x === yColor && y === xColor))
-    );
+    const [cornerId] =
+      cubieEntries.find(
+        ([k, [x, y, z]]) =>
+          z === zColor &&
+          ((x === xColor && y === yColor) || (x === yColor && y === xColor))
+      ) ?? [];
     if (!cornerId) {
       throw new Error(
         `corner [${xColor},${yColor},${zColor}] does not exists.`
@@ -298,7 +309,8 @@ export function cubeToState(cube, cubies) {
 
   for (let i = 0; i < 6; i++) {
     const center = cube[i][4];
-    const [centerId] = cubieEntries.find(([k, v]) => v === center);
+    const [centerId] =
+      cubieEntries.find(([k, v]) => v.length === 1 && v[0] === center) ?? [];
     if (!centerId) {
       throw new Error(`center ${center} does not exists.`);
     }
@@ -308,9 +320,7 @@ export function cubeToState(cube, cubies) {
   return state;
 }
 
-export function stateToCube(state, cubies) {
-  cubies = cubies ?? rubikCubies;
-
+export function stateToCube(state: TCubeState, cubies: TCubies = rubikCubies) {
   const cube = [
     Array.from({ length: 9 }, () => 6),
     Array.from({ length: 9 }, () => 6),
@@ -333,10 +343,11 @@ export function stateToCube(state, cubies) {
     const cubie = cubies[edgeId];
     const [primaryColor, secondaryColor] = cubie;
 
-    cube[primaryFace.faceIndex][uvToIndex(primaryFace.u, primaryFace.v)] =
+    cube[primaryFace!.faceIndex][uvToIndex(primaryFace!.u, primaryFace!.v)] =
       parity ? secondaryColor : primaryColor;
-    cube[secondaryFace.faceIndex][uvToIndex(secondaryFace.u, secondaryFace.v)] =
-      parity ? primaryColor : secondaryColor;
+    cube[secondaryFace!.faceIndex][
+      uvToIndex(secondaryFace!.u, secondaryFace!.v)
+    ] = parity ? primaryColor : secondaryColor;
   });
 
   coordinates.slice(12, 20).forEach((coordinate, i) => {
@@ -350,23 +361,23 @@ export function stateToCube(state, cubies) {
     const cubie = cubies[cornerId];
     const [xColor, yColor, zColor] = cubie;
 
-    cube[xFace.faceIndex][uvToIndex(xFace.u, xFace.v)] = parity
+    cube[xFace!.faceIndex][uvToIndex(xFace!.u, xFace!.v)] = parity
       ? yColor
       : xColor;
-    cube[yFace.faceIndex][uvToIndex(yFace.u, yFace.v)] = parity
+    cube[yFace!.faceIndex][uvToIndex(yFace!.u, yFace!.v)] = parity
       ? xColor
       : yColor;
-    cube[zFace.faceIndex][uvToIndex(zFace.u, zFace.v)] = zColor;
+    cube[zFace!.faceIndex][uvToIndex(zFace!.u, zFace!.v)] = zColor;
   });
 
   for (let i = 0; i < 6; i++) {
-    cube[i][4] = cubies[state[i + 20]];
+    cube[i][4] = cubies[state[i + 20]][0];
   }
 
   return cube;
 }
 
-export function getCorePermutation(state) {
+export function getCorePermutation(state: TCubeState) {
   return state
     .slice(20)
     .map((el) => Math.floor(el / 4) - 21)

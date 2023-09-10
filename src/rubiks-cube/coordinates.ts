@@ -1,4 +1,6 @@
-const coordinates = [
+import { IPoint3D } from "./spatial-util";
+
+const coordinates: IPoint3D[] = [
   // edges
   { x: -1, y: -1, z: 0 }, //  0
   { x: -1, y: 0, z: -1 }, //  1

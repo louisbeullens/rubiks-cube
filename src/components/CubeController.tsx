@@ -236,7 +236,7 @@ export const CubeController = ({
     };
 
   const onMoveButtonClick = (move: string) => {
-    if (!(move in operations) || operations[move] === false) {
+    if (!(move in operations)) {
       return;
     }
     const newState = operate(operations, state, move);

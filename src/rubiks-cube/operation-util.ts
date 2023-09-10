@@ -6,16 +6,25 @@ import {
   defaultState,
   textToCube,
 } from "./cube-util";
-import { getMutation, mutate, negateMutation } from "./mutation-util";
+import {
+  getMutation,
+  IMutation,
+  mutate,
+  negateMutation,
+} from "./mutation-util";
 import rubikCubies from "./textureCubies";
+import { TCube, TCubeState, TCubies } from "./types";
 
-const OPERATION_TEMPLATE = {
-  algorithm: undefined,
-  reverseAlgorithm: undefined,
-  mutation: undefined,
-};
+interface IOperation {
+  algorithm: string;
+  reverseAlgorithm?: string;
+  mutation: IMutation;
+}
 
-function reverseAlgorithm(operations, algorithm) {
+type TUninitializedOperationMap = Record<string, string | IOperation>;
+type TOperationMap = Record<string, IOperation>;
+
+function reverseAlgorithm(operations: TOperationMap, algorithm: string) {
   const reverseAlgorithmParts = algorithm
     .split(" ")
     .reverse()
@@ -27,21 +36,16 @@ function reverseAlgorithm(operations, algorithm) {
 }
 
 export function createOperationFromState(
-  operationName,
-  state,
-  centerPosition,
-  centerRotation
+  operationName: string,
+  state: TCubeState = defaultState,
+  centerPosition: number = 20,
+  centerRotation: number = 0
 ) {
-  state = state ?? defaultState;
-  centerPosition = centerPosition ?? 20;
-  centerRotation = centerRotation ?? 0;
-
   const mutation = getMutation(state);
   mutation.orientation[centerPosition] = centerRotation;
 
   return {
     [operationName]: {
-      ...OPERATION_TEMPLATE,
       algorithm: operationName,
       mutation,
     },
@@ -49,13 +53,12 @@ export function createOperationFromState(
 }
 
 export function createOperationFromCube(
-  operationName,
-  cube,
-  cubies,
-  centerPosition,
-  centerRotation
+  operationName: string,
+  cube: TCube,
+  cubies: TCubies = rubikCubies,
+  centerPosition?: number,
+  centerRotation?: number
 ) {
-  cubies = cubies ?? rubikCubies;
   const state = cubeToState(cube, cubies);
   return createOperationFromState(
     operationName,
@@ -66,11 +69,11 @@ export function createOperationFromCube(
 }
 
 export function createOperationFromText(
-  operationName,
-  text,
-  cubies,
-  centerPosition,
-  centerRotation
+  operationName: string,
+  text: string[],
+  cubies: TCubies = rubikCubies,
+  centerPosition?: number,
+  centerRotation?: number
 ) {
   return createOperationFromCube(
     operationName,
@@ -81,14 +84,17 @@ export function createOperationFromText(
   );
 }
 
-function createMutationFromAlgorithm(algorithm, operations, solvedState) {
-  solvedState = solvedState ?? defaultState;
+function createMutationFromAlgorithm(
+  algorithm: string,
+  operations: TUninitializedOperationMap,
+  solvedState: TCubeState = defaultState
+) {
   let tmpState = [...solvedState];
-  tmpState = operator(operations, solvedState)(tmpState, algorithm);
+  tmpState = operate(operations, tmpState, algorithm, solvedState);
   return getMutation(tmpState);
 }
 
-export function createOperationMap(fundamentalOperations) {
+export function createOperationMap(fundamentalOperations: TOperationMap) {
   return {
     ...fundamentalOperations,
     // fundamental Z operations
@@ -152,14 +158,16 @@ export function createOperationMap(fundamentalOperations) {
   };
 }
 
-function normalizeOperation(operations, operationName, solvedState) {
-  solvedState = solvedState ?? defaultState;
+function normalizeOperation(
+  operations: TUninitializedOperationMap,
+  operationName: string,
+  solvedState: TCubeState = defaultState
+) {
   let operation = operations[operationName];
   if (typeof operation === "string") {
     operation = operations[operationName] = {
-      ...OPERATION_TEMPLATE,
       algorithm: operation,
-    };
+    } as unknown as IOperation;
   }
   if (!operation.mutation) {
     operation.mutation = createMutationFromAlgorithm(
@@ -168,21 +176,25 @@ function normalizeOperation(operations, operationName, solvedState) {
       solvedState
     );
   }
-  return operation;
+  return operation as IOperation;
 }
 
-export function initOperationMap(operations, solvedState) {
+export function initOperationMap(
+  operations: TUninitializedOperationMap,
+  solvedState: TCubeState = defaultState
+) {
   solvedState = solvedState ?? defaultState;
   for (const [operationName, operation] of Object.entries(operations)) {
-    if (!operation.mutation) {
+    if (typeof operation === "string") {
       normalizeOperation(operations, operationName, solvedState);
     }
   }
 
-  for (const operation of Object.values(operations)) {
+  for (const untypedOperation of Object.values(operations)) {
+    const operation = untypedOperation as IOperation;
     const negativeMutation = negateMutation(operation.mutation);
     const reverseOperationEntry = findOperationEntryByMutation(
-      operations,
+      operations as TOperationMap,
       negativeMutation
     );
     if (!reverseOperationEntry) {
@@ -192,22 +204,23 @@ export function initOperationMap(operations, solvedState) {
     operation.reverseAlgorithm = reverseOperationName;
   }
 
-  for (const operation of Object.values(operations)) {
+  for (const untypedOperation of Object.values(operations)) {
+    const operation = untypedOperation as IOperation;
     if (operation.reverseAlgorithm) {
       continue;
     }
     operation.reverseAlgorithm = reverseAlgorithm(
-      operations,
+      operations as TOperationMap,
       operation.algorithm
     );
   }
 
-  return operations;
+  return operations as TOperationMap;
 }
 
 export function findOperationEntryByMutation(
-  operations,
-  { position, orientation }
+  operations: TOperationMap,
+  { position, orientation }: IMutation
 ) {
   return Object.entries(operations).find(
     ([k, { mutation: el }]) =>
@@ -218,28 +231,30 @@ export function findOperationEntryByMutation(
 }
 
 export function findOperationEntryByDifference(
-  operations,
-  cubeB,
-  cubeA,
-  cubies
+  operations: TOperationMap,
+  cubeB: TCube,
+  cubeA: TCube = defaultCube,
+  cubies: TCubies = rubikCubies
 ) {
-  cubeA = cubeA ?? defaultCube;
-  cubies = cubies ?? rubikCubies;
-
   const tmpCubies = createCubies(cubeA, cubies);
   const tmpState = cubeToState(cubeB, tmpCubies);
   const mutation = getMutation(tmpState);
   return findOperationEntryByMutation(operations, mutation);
 }
 
-export function operate(operations, state, algorithm, solvedState) {
+export function operate(
+  operations: TUninitializedOperationMap,
+  state: TCubeState,
+  algorithm: string,
+  solvedState: TCubeState = defaultState
+) {
   let tmpState = [...state];
   for (const operationName of algorithm.split(" ")) {
     if (!operationName) {
       break;
     }
     let operation = operations[operationName];
-    if (!operation.mutation) {
+    if (typeof operation === "string") {
       operation = normalizeOperation(operations, operationName, solvedState);
     }
     tmpState = mutate(tmpState, operation.mutation);
@@ -247,9 +262,12 @@ export function operate(operations, state, algorithm, solvedState) {
   return tmpState;
 }
 
-export function operator(operations, solvedState) {
+export function operator(
+  operations: TOperationMap,
+  solvedState: TCubeState = defaultState
+) {
   solvedState = solvedState ?? defaultState;
-  return function (state, algorithm) {
+  return function (state: TCubeState, algorithm: string) {
     return operate(operations, state, algorithm, solvedState);
   };
 }

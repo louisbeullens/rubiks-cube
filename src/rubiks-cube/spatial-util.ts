@@ -1,3 +1,19 @@
+export type TAxisName = "x" | "y" | "z";
+
+export interface IPoint3D {
+  x: number;
+  y: number;
+  z: number;
+}
+
+interface IFaceInfoEntry {
+  axis: TAxisName;
+  direction: number;
+  textureU: number;
+  textureV: number;
+  uvMapping: { axis: TAxisName; direction: number }[];
+}
+
 export const faceNames = {
   U: 0,
   L: 1,
@@ -9,7 +25,7 @@ export const faceNames = {
 
 export const faceIndices = Object.values(faceNames);
 
-export const faceInfo = {
+export const faceInfo: Record<number, IFaceInfoEntry> = {
   [faceNames.U]: {
     axis: "y",
     direction: 1,
@@ -72,11 +88,11 @@ export const faceInfo = {
   },
 };
 
-export function uvToIndex(u, v) {
+export function uvToIndex(u: number, v: number) {
   return 3 * v + u + 4;
 }
 
-export function point3DtoUv(point3D, faceIndex) {
+export function point3DtoUv(point3D: IPoint3D, faceIndex: number) {
   const { axis, direction, uvMapping } = faceInfo[faceIndex];
 
   if (point3D[axis] !== direction) {
@@ -108,7 +124,7 @@ export function point3DtoUv(point3D, faceIndex) {
   };
 }
 
-export function uvToPoint3D(faceIndex, u, v) {
+export function uvToPoint3D(faceIndex: number, u: number, v: number) {
   const { axis, direction, uvMapping } = faceInfo[faceIndex];
 
   const [uAxis, vAxis] = uvMapping;
@@ -137,8 +153,8 @@ export function uvToPoint3D(faceIndex, u, v) {
   return { x, y, z };
 }
 
-export function getFacesOfPoint3D(point3D) {
-  const faces = [];
+export function getFacesOfPoint3D(point3D: IPoint3D) {
+  const faces: NonNullable<ReturnType<typeof point3DtoUv>>[] = [];
   faceIndices.forEach((faceIndex) => {
     const uvInfo = point3DtoUv(point3D, faceIndex);
     if (!uvInfo) {

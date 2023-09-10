@@ -7,7 +7,14 @@ import {
 } from "../rubiks-cube/cube-util";
 import { rotationMap } from "../rubiks-cube/rotationMap";
 import { coreOrientationMap } from "../rubiks-cube/rotationMap";
-import { faceInfo, point3DtoUv, uvToIndex } from "../rubiks-cube/spatial-util";
+import {
+  faceInfo,
+  IPoint3D,
+  point3DtoUv,
+  TAxisName,
+  uvToIndex,
+} from "../rubiks-cube/spatial-util";
+import { TCubeState } from "../rubiks-cube/types";
 import { mod4 } from "../utils";
 
 const ONE_TWELFTH = 1 / 12;
@@ -41,7 +48,8 @@ const uvRotationMap = [
 ];
 
 class CubieGeometry extends THREE.BufferGeometry {
-  constructor(coordinate, cubeState = defaultState) {
+  parameters: { coordinate: IPoint3D; cubeState: TCubeState };
+  constructor(coordinate: IPoint3D, cubeState: TCubeState = defaultState) {
     const width = 1,
       height = 1,
       depth = 1;
@@ -49,6 +57,7 @@ class CubieGeometry extends THREE.BufferGeometry {
 
     super();
 
+    // @ts-ignore
     this.type = "CubeGeometry";
 
     this.parameters = {
@@ -60,10 +69,10 @@ class CubieGeometry extends THREE.BufferGeometry {
 
     // buffers
 
-    const indices = [];
-    const vertices = [];
-    const normals = [];
-    const uvs = [];
+    const indices: number[] = [];
+    const vertices: number[] = [];
+    const normals: number[] = [];
+    const uvs: number[] = [];
 
     // helper variables
 
@@ -99,7 +108,17 @@ class CubieGeometry extends THREE.BufferGeometry {
     this.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
     this.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
 
-    function buildPlane(a, b, c, udir, vdir, width, height, depth, faceIndex) {
+    function buildPlane(
+      a: TAxisName,
+      b: TAxisName,
+      c: TAxisName,
+      udir: number,
+      vdir: number,
+      width: number,
+      height: number,
+      depth: number,
+      faceIndex: number
+    ) {
       const widthHalf = width / 2;
       const heightHalf = height / 2;
       const depthHalf = depth / 2;
@@ -113,11 +132,11 @@ class CubieGeometry extends THREE.BufferGeometry {
 
       const homeSticker = face
         ? defaultCube[face.faceIndex][uvToIndex(face.u, face.v)]
-        : undefined;
+        : 0;
 
       const sticker = face
         ? cube[face.faceIndex][uvToIndex(face.u, face.v)]
-        : undefined;
+        : 0;
 
       const rotation = face
         ? isCenterCubie
@@ -125,19 +144,15 @@ class CubieGeometry extends THREE.BufferGeometry {
           : rotationMap[homeSticker][sticker]
         : 0;
 
-      const stickerFaceIndex = face ? Math.floor(sticker / 9) % 6 : undefined;
+      const stickerFaceIndex = face ? Math.floor(sticker / 9) % 6 : 0;
 
-      const stickerU = face
-        ? isCenterCubie
-          ? 1
-          : (sticker % 9) % 3
-        : undefined;
+      const stickerU = face ? (isCenterCubie ? 1 : (sticker % 9) % 3) : 0;
 
       const stickerV = face
         ? isCenterCubie
           ? 1
           : Math.floor((sticker % 9) / 3)
-        : undefined;
+        : 0;
 
       // generate vertices, normals and uvs
 
@@ -224,7 +239,7 @@ class CubieGeometry extends THREE.BufferGeometry {
     }
   }
 
-  copy(source) {
+  copy(source: any) {
     super.copy(source);
 
     this.parameters = JSON.parse(JSON.stringify(source.parameters));
@@ -232,7 +247,7 @@ class CubieGeometry extends THREE.BufferGeometry {
     return this;
   }
 
-  static fromJSON(data) {
+  static fromJSON(data: any) {
     return new CubieGeometry(data.coordinate, data.cubeState);
   }
 }

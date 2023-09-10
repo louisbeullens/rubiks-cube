@@ -1,4 +1,4 @@
-export const coreOrientationMap = {
+export const coreOrientationMap: Record<string, number[]> = {
   "012345": [0, 0, 0, 0, 0, 0],
   "023415": [1, 0, 0, 0, 0, 3],
   "034125": [2, 0, 0, 0, 0, 2],
@@ -25,7 +25,7 @@ export const coreOrientationMap = {
   543210: [1, 2, 2, 2, 2, 3],
 };
 
-export const rotationMap = {
+export const rotationMap: Record<number, Record<number, number>> = {
   0: {
     0: 0,
     2: 3,
