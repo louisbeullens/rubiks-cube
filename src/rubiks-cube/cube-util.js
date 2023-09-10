@@ -1,7 +1,6 @@
 import coordinates from "./coordinates";
+import { getFacesOfPoint3D, uvToIndex } from "./spatial-util";
 import rubikCubies from "./textureCubies";
-
-const { getFacesOfPoint3D, uvToIndex } = require("./spatial-util");
 
 export function textToCube(text) {
   return [
