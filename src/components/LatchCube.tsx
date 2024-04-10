@@ -6,7 +6,13 @@ import latchCubies from "../rubiks-cube/latchCubies";
 import { faceNames } from "../rubiks-cube/spatial-util";
 import { TCubeState } from "../rubiks-cube/types";
 import { getRubiksCubeMovesAllowed, RubiksCube } from "./RubiksCube";
-import { ECubeType, ICubeHandle, ICubeProps } from "./RubiksCube.types";
+import {
+  ECubeType,
+  ICubeHandle,
+  ICubeProps,
+  TRotateParam,
+  TRotateParams,
+} from "./RubiksCube.types";
 
 const directions: Record<string, 1 | undefined | -1> = {
   "": 1,
@@ -42,11 +48,54 @@ function getLatchCubeMovesAllowed(state: TCubeState) {
   return result;
 }
 
+const rotateParamFactory =
+  (
+    faceIndex: number,
+    quarterTurns: number = 1,
+    counterClockWise: boolean = false
+  ) =>
+  (state: TCubeState): TRotateParam => {
+    const cube = stateToCube(state, latchCubies);
+
+    const face = cube[faceIndex];
+    const constraint = face.find((el) => el);
+    switch (constraint) {
+      case -1:
+        return [faceIndex, 2, !counterClockWise];
+      case 1:
+        return [faceIndex, 2, counterClockWise];
+      default:
+        return [faceIndex, 2, counterClockWise];
+    }
+  };
+
+export const latchCubeRotateParams: TRotateParams = {
+  U: [0, 1, false],
+  U2: rotateParamFactory(0, 2, false),
+  "U'": [0, 1, true],
+  L: [1, 1, true],
+  L2: rotateParamFactory(1, 2, true),
+  "L'": [1, 1, false],
+  F: [2, 1, false],
+  F2: rotateParamFactory(2, 2, false),
+  "F'": [2, 1, true],
+  R: [3, 1, false],
+  R2: rotateParamFactory(3, 2, false),
+  "R'": [3, 1, true],
+  B: [4, 1, true],
+  B2: rotateParamFactory(4, 2, true),
+  "B'": [4, 1, false],
+  D: [5, 1, true],
+  D2: rotateParamFactory(5, 2, true),
+  "D'": [5, 1, false],
+};
+
 export const latchCubeCharacteristic: ICubeCharacteristic = {
   name: "Latch Cube",
   type: ECubeType.Latch,
   texture,
   getMovesAllowed: getLatchCubeMovesAllowed,
+  rotateParams: latchCubeRotateParams,
 };
 
 export const LatchCube = React.forwardRef<
@@ -60,6 +109,7 @@ export const LatchCube = React.forwardRef<
       texture,
       perspective,
       onChange,
+      rotateParams: latchCubeRotateParams,
     }}
   />
 ));

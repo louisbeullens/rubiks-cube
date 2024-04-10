@@ -4,6 +4,7 @@ import {
   cubeToState,
   defaultCube,
   defaultState,
+  getCorePermutation,
   textToCube,
 } from "./cube-util";
 import {
@@ -132,6 +133,7 @@ export function createOperationMap(fundamentalOperations: TOperationMap) {
     Z2: "Z Z",
     "Z'": "Z2 Z",
     // rotations
+    "012345": "",
     "023415": "Y",
     "034125": "Y2",
     "041235": "Y'",
@@ -260,6 +262,21 @@ export function operate(
     tmpState = mutate(tmpState, operation.mutation);
   }
   return tmpState;
+}
+
+export function orientate(
+  operations: TUninitializedOperationMap,
+  state: TCubeState,
+  solvedState: TCubeState = defaultState
+) {
+  const corePermutation = getCorePermutation(state);
+  let operation = operations[corePermutation];
+  if (typeof operation === "string") {
+    operation = normalizeOperation(operations, corePermutation, solvedState);
+  }
+  return operation.reverseAlgorithm
+    ? operate(operations, state, operation.reverseAlgorithm!, defaultState)
+    : state;
 }
 
 export function operator(

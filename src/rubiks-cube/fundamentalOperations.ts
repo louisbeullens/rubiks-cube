@@ -2,6 +2,23 @@ import { createOperationFromText } from "./operation-util";
 import rubiksCubies from "./rubiksCubies";
 
 const fundamentalOperations = {
+  ...createOperationFromText(
+    "",
+    [
+      "   000      ",
+      "   000      ",
+      "   000      ",
+      "111222333444",
+      "111222333444",
+      "111222333444",
+      "   555      ",
+      "   555      ",
+      "   555      ",
+    ],
+    rubiksCubies,
+    21,
+    1
+  ),
   // X axis
   ...createOperationFromText(
     "L",

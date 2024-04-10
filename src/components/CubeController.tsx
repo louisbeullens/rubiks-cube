@@ -9,7 +9,7 @@ import {
   operate,
 } from "../rubiks-cube/operation-util";
 import { TCubeState } from "../rubiks-cube/types";
-import { deserializeCube } from "../storage-utils";
+import { deserializeCube, serializeCube } from "../storage-utils";
 import { clone } from "../utils";
 import { CubeStorage } from "./CubeStorage";
 import {
@@ -113,6 +113,7 @@ export const CubeController = ({
   const [state, setState] = React.useState(
     cubeRef?.current?.cubeState ?? defaultState
   );
+  const stateRef = useLatestRef(state);
   const [autoStorage, setAutoStorage] = React.useState(
     permaLink ? false : true
   );
@@ -187,6 +188,14 @@ export const CubeController = ({
     setPerspective(perspective);
   };
 
+  const onLoadClickInternal = () => {
+    const data = storageRef.current?.load();
+    if (!data) {
+      return;
+    }
+    loadConfig(data);
+  };
+
   const onSaveClickInternal = () => {
     const newState = clone(state);
     const data = {
@@ -198,12 +207,19 @@ export const CubeController = ({
     saveConfig(data, true);
   };
 
-  const onLoadClickInternal = () => {
-    const data = storageRef.current?.load();
-    if (!data) {
-      return;
-    }
-    loadConfig(data);
+  const onShareClickInternal = () => {
+    const newState = clone(state);
+    const data = {
+      title: "Cube",
+      url: `https://louisbeullens.github.io/rubiks-cube/?config=${serializeCube(
+        {
+          perspective,
+          type: characteristic.type,
+          state: newState,
+        }
+      )}`,
+    };
+    navigator.share(data);
   };
 
   const movesAllowed = cubeRef
@@ -236,13 +252,19 @@ export const CubeController = ({
     };
 
   const onMoveButtonClick = (move: string) => {
+    const tmpState = stateRef.current;
     if (!(move in operations)) {
       return;
     }
-    const newState = operate(operations, state, move);
+    const tmpMovesAllowed = characteristic.getMovesAllowed(tmpState);
+    if (!tmpMovesAllowed[move]) {
+      return;
+    }
+    const newState = operate(operations, tmpState, move);
     if (cubeRef?.current) {
       cubeRef.current.cubeState = newState;
     }
+    stateRef.current = newState;
     setState(newState);
   };
 
@@ -267,6 +289,7 @@ export const CubeController = ({
         onChange={onCubeChange}
         onSwipeU={onCubeSwipeFactory("u")}
         onSwipeV={onCubeSwipeFactory("v")}
+        rotateParams={characteristic.rotateParams}
       />
     );
   };
@@ -286,18 +309,6 @@ export const CubeController = ({
   return (
     <Flex grow column spaceBetween padding="0 1vw" gap="1rem">
       <div
-        // onClickCapture={(e) => {
-        //   e.preventDefault();
-        //   e.stopPropagation();
-        // }}
-        // onContextMenuCapture={(e) => {
-        //   e.preventDefault();
-        //   e.stopPropagation();
-        // }}
-        // onScrollCapture={(e) => {
-        //   e.preventDefault();
-        //   e.stopPropagation();
-        // }}
         style={{
           backgroundColor: "#FFFFFF",
           position: "sticky",
@@ -311,7 +322,6 @@ export const CubeController = ({
       <Flex row wrap spaceAround gap="1rem">
         <Flex grow={1} column>
           <MoveButtons
-            state={state}
             onClick={onMoveButtonClick}
             movesAllowed={movesAllowed}
           />
@@ -321,7 +331,7 @@ export const CubeController = ({
             <Flex row>
               <button onClick={onLoadClickInternal}>Load</button>
               <button onClick={onSaveClickInternal}>Save</button>
-              {/* <button onClick={onSolveClickInternal}>Solve</button> */}
+              <button onClick={onShareClickInternal}>Share</button>
             </Flex>
             <Flex row>
               Perspective

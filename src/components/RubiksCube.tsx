@@ -6,7 +6,7 @@ import fundamentalOperations from "../rubiks-cube/fundamentalOperations";
 import { createOperationMap } from "../rubiks-cube/operation-util";
 import { faceNames as untypedFaceNames } from "../rubiks-cube/spatial-util";
 import { TCubeState } from "../rubiks-cube/types";
-import { Cube3D } from "./Cube3D";
+import { Cube3D, rubiksCubeRotateParams } from "./Cube3D";
 import {
   ECubeType,
   EPerspective,
@@ -23,7 +23,9 @@ export function getRubiksCubeMovesAllowed(state: TCubeState) {
   const result: Record<string, boolean> = {};
 
   Object.keys(operations)
-    .filter((move) => move.length <= 2 && !["M", "E", "S"].includes(move[0]))
+    .filter(
+      (move) => move && move.length <= 2 && !["M", "E", "S"].includes(move[0])
+    )
     .sort((a, b) =>
       a[0] in faceNames && b[0] in faceNames && a[0] !== b[0]
         ? faceNames[a[0]] - faceNames[b[0]]
@@ -41,6 +43,7 @@ export const rubiksCharacteristic: ICubeCharacteristic = {
   type: ECubeType.Rubiks,
   texture: defaultTexture,
   getMovesAllowed: getRubiksCubeMovesAllowed,
+  rotateParams: rubiksCubeRotateParams,
 };
 
 export const RubiksCube = React.forwardRef<ICubeHandle, ICubeProps>(
@@ -53,6 +56,7 @@ export const RubiksCube = React.forwardRef<ICubeHandle, ICubeProps>(
       onChange,
       onSwipeU,
       onSwipeV,
+      rotateParams,
     },
     forwardRef
   ) => {
@@ -71,6 +75,7 @@ export const RubiksCube = React.forwardRef<ICubeHandle, ICubeProps>(
               onChange,
               onSwipeU,
               onSwipeV,
+              rotateParams,
             }}
           />
         );
@@ -86,6 +91,7 @@ export const RubiksCube = React.forwardRef<ICubeHandle, ICubeProps>(
               onChange,
               onSwipeU,
               onSwipeV,
+              rotateParams,
             }}
           />
         );

@@ -88,6 +88,8 @@ export const faceInfo: Record<number, IFaceInfoEntry> = {
   },
 };
 
+export const faceInfoEntries = Object.entries(faceInfo);
+
 export function uvToIndex(u: number, v: number) {
   return 3 * v + u + 4;
 }

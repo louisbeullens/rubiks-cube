@@ -1,4 +1,8 @@
-import { ECubeType } from "./components/RubiksCube.types";
+import {
+  ECubeType,
+  TRotateParam,
+  TRotateParams,
+} from "./components/RubiksCube.types";
 import { TCubeState } from "./rubiks-cube/types";
 
 export interface ICubeCharacteristic {
@@ -7,6 +11,7 @@ export interface ICubeCharacteristic {
   hidden?: boolean;
   texture: string;
   getMovesAllowed: (state: TCubeState) => Record<string, boolean>;
+  rotateParams: TRotateParams;
 }
 
 const registeredCubes: { [type: number]: ICubeCharacteristic } = {};

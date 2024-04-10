@@ -1,18 +1,34 @@
 import React from "react";
-import EventEmitter from "events";
 import * as Three from "three";
 import { isDebugActive } from "../config";
+import { useLatestRef } from "../hooks";
 import { TInitFn, TOnAnimateFn, useThree } from "../hooks/useThree";
 import defaultTexture from "../images/rubiks-cube.png";
-import { defaultState, stateToCube } from "../rubiks-cube/cube-util";
+import {
+  defaultState,
+  getCorePermutation,
+  stateToCube,
+} from "../rubiks-cube/cube-util";
 import fundamentalOperations from "../rubiks-cube/fundamentalOperations";
 import {
   createOperationMap,
   findOperationEntryByDifference,
   initOperationMap,
+  operate,
+  orientate,
 } from "../rubiks-cube/operation-util";
-import { faceInfo, faceNames } from "../rubiks-cube/spatial-util";
+import { coreOrientationMap } from "../rubiks-cube/rotationMap";
+import {
+  faceInfo,
+  faceInfoEntries,
+  faceNames,
+} from "../rubiks-cube/spatial-util";
 import { CubieGeometry } from "../threejs/CubieGeometry";
+import {
+  sortVectorEntries,
+  TVectorEntry,
+  vectorToEntries,
+} from "../vector-utils";
 import { ICubeHandle, ICubeProps } from "./RubiksCube.types";
 
 type TRotateFaceFn = (
@@ -20,7 +36,22 @@ type TRotateFaceFn = (
   quarterTurns: number,
   counterClockWise: boolean
 ) => Promise<void> | undefined;
-type TRotationQueue = { axis: Three.Vector3; radian: number }[];
+
+interface IRotationJob {
+  initialized: boolean;
+  faceIndex: number;
+  resolvers: Array<() => void>;
+  group: Three.Group;
+  radian: number;
+  count: number;
+}
+
+interface IParallelJobs {
+  axisName: string;
+  axis: Three.Vector3;
+  "-1": IRotationJob;
+  "1": IRotationJob;
+}
 
 type TRotateParam = [number, number, boolean];
 
@@ -28,9 +59,11 @@ export interface ICubeControls {
   rotate?: TRotateFaceFn;
 }
 
+const QUARTERTURN_STEPS = 25;
+
 const operations = initOperationMap(createOperationMap(fundamentalOperations));
 
-const rotateParams: Record<string, TRotateParam> = {
+export const rubiksCubeRotateParams: Record<string, TRotateParam> = {
   U: [0, 1, false],
   U2: [0, 2, false],
   "U'": [0, 1, true],
@@ -51,31 +84,59 @@ const rotateParams: Record<string, TRotateParam> = {
   "D'": [5, 1, false],
 };
 
-const getCameraInfo = (camera: Three.PerspectiveCamera) => ({
-  position: camera.position,
-  direction: camera.getWorldDirection(new Three.Vector3()),
-  rotationZ: camera.rotation.z,
-});
+const getCameraInfo = (camera: Three.PerspectiveCamera) => {
+  return {
+    position: camera.position.clone(),
+    direction: camera.getWorldDirection(new Three.Vector3()),
+    up: camera.up.clone(),
+    quaternion: camera.quaternion.clone(),
+    rotation: camera.rotation.clone(),
+  };
+};
+
+const axises = {
+  x: new Three.Vector3(1, 0, 0),
+  y: new Three.Vector3(0, 1, 0),
+  z: new Three.Vector3(0, 0, 1),
+};
+
+const alternateFaceNames = [
+  "White",
+  "Green",
+  "Red",
+  "Blue",
+  "Orange",
+  "Yellow",
+];
 
 export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
   (
-    { cubeState = defaultState, texture: textureProp = defaultTexture },
+    {
+      cubeState = defaultState,
+      texture: textureProp = defaultTexture,
+      rotateParams = rubiksCubeRotateParams,
+      onChange,
+    },
     forwardRef
   ) => {
+    const onChangeRef = useLatestRef(onChange);
     // store cube state for creating geometry
-    const [initialCubeState, setInitialCubeState] = React.useState(cubeState);
+    const [initialCubeState, setInitialCubeState] = React.useState(
+      orientate(operations, cubeState, defaultState)
+    );
 
     // store current cube
     const cubeRef = React.useRef(stateToCube(initialCubeState));
 
-    const [rotationQueue] = React.useState<TRotationQueue>([]);
-    const [dispatcher] = React.useState(new EventEmitter());
-
     const [cameraInfo, setCameraInfo] = React.useState({
       position: new Three.Vector3(),
       direction: new Three.Vector3(),
-      rotationZ: 0,
+      up: new Three.Vector3(),
+      quaternion: new Three.Quaternion(),
+      rotation: new Three.Euler(),
     });
+
+    const [orientation, setOrientation] = React.useState("012345");
 
     const cubeControlsRef = React.useRef<Partial<ICubeControls>>({});
 
@@ -95,7 +156,7 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
         camera.position.y = distance;
         camera.position.z = distance;
         camera.lookAt(new Three.Vector3(0, 0, 0));
-        camera.updateMatrix();
+        camera.up.set(-0.4, 0.8, -0.4);
         camera.updateProjectionMatrix();
         setCameraInfo(getCameraInfo(camera));
 
@@ -110,12 +171,10 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
           });
           controls.update();
         }
-        rotationQueue.splice(0);
 
         const texture = new Three.TextureLoader().load(textureProp, () => {
           render();
         });
-
         const material = new Three.MeshBasicMaterial({ map: texture });
 
         const cubes: Three.Object3D[] = [];
@@ -135,27 +194,59 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
           }
         }
 
-        const axes = {
-          x: new Three.Vector3(1, 0, 0),
-          y: new Three.Vector3(0, 1, 0),
-          z: new Three.Vector3(0, 0, 1),
-        };
+        const parallelJobsQueue: IParallelJobs[] = [];
 
-        let group = new Three.Group();
-        const prepareRotation = (axis: string, direction: number) => {
-          group = new Three.Group();
+        const prepareJob = (job: IRotationJob) => {
+          if (job.faceIndex === -1 || job.initialized) {
+            return;
+          }
+          const face = faceInfo[job.faceIndex];
+          const group = new Three.Group();
           scene.add(group);
           group.add(
-            ...cubes.filter((el) => (el.position as any)[axis] === direction)
+            ...cubes.filter((el) => el.position[face.axis] === face.direction)
           );
+          job.group = group;
+          job.initialized = true;
         };
 
-        const applyRotation = ({ axis, radian }: (typeof rotationQueue)[0]) => {
-          group.rotateOnAxis(axis, radian);
+        const prepareRotation = (
+          faceIndex: number,
+          radian: number,
+          count: number,
+          resolve: () => void
+        ) => {
+          const parallelJobs = parallelJobsQueue.at(-1)!;
+          const face = faceInfo[faceIndex];
+
+          parallelJobs.axisName = face.axis;
+          parallelJobs.axis = axises[face.axis];
+
+          const job = (parallelJobs as any)[face.direction];
+
+          job.faceIndex = faceIndex;
+          job.radian = radian;
+          job.count += count;
+          job.resolvers.push(resolve);
+          if (parallelJobsQueue.length === 1) {
+            prepareJob(job);
+          }
         };
 
-        const finishRotation = () => {
-          for (const cube of [...group.children]) {
+        const applyRotation = (axis: Three.Vector3, job: IRotationJob) => {
+          if (!job.count) {
+            return;
+          }
+          const sign = Math.sign(job.count);
+          job.group.rotateOnAxis(axis, job.radian * sign);
+          job.count -= sign;
+          if (!job.count) {
+            finishRotation(job);
+          }
+        };
+
+        const finishRotation = (job: IRotationJob) => {
+          for (const cube of [...job.group.children]) {
             const position = cube.getWorldPosition(new Three.Vector3());
             const quaternation = cube.getWorldQuaternion(
               new Three.Quaternion()
@@ -163,52 +254,53 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
             scene.add(cube);
             cube.position.copy(position);
             cube.rotation.setFromQuaternion(quaternation);
-            cube.position.x =
-              (0.5 * Math.round((2 * cube.position.x) / 0.5)) / 2;
-            cube.position.y =
-              (0.5 * Math.round((2 * cube.position.y) / 0.5)) / 2;
-            cube.position.z =
-              (0.5 * Math.round((2 * cube.position.z) / 0.5)) / 2;
+            cube.position.x = Math.round(cube.position.x);
+            cube.position.y = Math.round(cube.position.y);
+            cube.position.z = Math.round(cube.position.z);
           }
-          group.removeFromParent();
+          job.group.removeFromParent();
+          job.resolvers.forEach((resolve) => resolve());
         };
 
-        let isRotating = false;
         const rotate = (
           faceIndex: number = faceNames.U,
           quarterTurns: number = 1,
           counterClockWise: boolean = false
         ) => {
-          if (isRotating) {
-            dispatcher.once("finishRotation", () => {
-              rotate(faceIndex, quarterTurns, counterClockWise);
-            });
-            return;
-          }
-          isRotating = true;
-          const steps = 25;
+          const face = faceInfo[faceIndex];
+          const steps = QUARTERTURN_STEPS;
+          const radian = Math.PI / 2 / steps;
+          const count = steps * quarterTurns * (counterClockWise ? 1 : -1);
 
-          const axis = faceInfo[faceIndex].axis;
-          const vAxis = (axes as any)[axis] as THREE.Vector3;
-          const diretion = faceInfo[faceIndex].direction;
-          const radian =
-            ((Math.PI / 2) * quarterTurns * (counterClockWise ? 1 : -1)) /
-            steps;
-
-          // prepare group
-          prepareRotation(axis, diretion);
-
-          // push steps on queue
-          for (let j = 0; j < steps; j++) {
-            rotationQueue.push({ axis: vAxis, radian });
+          let parallelJobs = parallelJobsQueue.at(-1);
+          if (!parallelJobs || parallelJobs.axisName !== face.axis) {
+            parallelJobs = {
+              axisName: "",
+              axis: new Three.Vector3(),
+              "-1": {
+                initialized: false,
+                faceIndex: -1,
+                resolvers: [],
+                group: new Three.Group(),
+                radian: 0,
+                count: 0,
+              },
+              "1": {
+                initialized: false,
+                faceIndex: -1,
+                resolvers: [],
+                group: new Three.Group(),
+                radian: 0,
+                count: 0,
+              },
+            };
+            parallelJobsQueue.push(parallelJobs);
           }
 
           // wait for animation loop finished
           return new Promise<void>((resolve) => {
-            dispatcher.once("finishRotation", () => {
-              isRotating = false;
-              return resolve();
-            });
+            // prepare group
+            prepareRotation(faceIndex, radian, count, resolve);
           });
         };
 
@@ -217,17 +309,23 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
         render();
 
         const onAnimate: TOnAnimateFn = ({ render }) => {
-          if (!rotationQueue.length) {
+          let parallelJobs = parallelJobsQueue.at(0);
+          if (!parallelJobs) {
             return;
           }
-          const transformation = rotationQueue.shift();
-          if (transformation) {
-            applyRotation(transformation);
-            render();
-            if (!rotationQueue.length) {
-              finishRotation();
-              dispatcher.emit("finishRotation");
+
+          applyRotation(parallelJobs.axis, parallelJobs["-1"]);
+          applyRotation(parallelJobs.axis, parallelJobs["1"]);
+          render();
+
+          if (!parallelJobs["-1"].count && !parallelJobs["1"].count) {
+            parallelJobsQueue.shift();
+            parallelJobs = parallelJobsQueue.at(0);
+            if (!parallelJobs) {
+              return;
             }
+            prepareJob(parallelJobs["-1"]);
+            prepareJob(parallelJobs["1"]);
           }
         };
 
@@ -235,12 +333,103 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
           onAnimate,
         };
       },
-      [rotationQueue, dispatcher, textureProp, initialCubeState]
+      [textureProp, initialCubeState]
     );
 
     React.useEffect(() => {
+      const direction = cameraInfo.direction.clone().negate();
+      const up = cameraInfo.up.clone();
+
+      let [U] = sortVectorEntries(vectorToEntries(up)).reverse();
+
+      let [F, LR] = sortVectorEntries(
+        vectorToEntries(direction).filter(([k]) => k !== U[0])
+      ).reverse();
+
+      U[1] = U[1] < 0 ? -1 : 1;
+      F[1] = F[1] < 0 ? -1 : 1;
+      LR[1] = LR[1] < 0 ? -1 : 1;
+
+      if (U[1] * direction[U[0]] < 0) {
+        const D = [U[0], -U[1]] as TVectorEntry;
+        U = F;
+        F = D;
+      }
+
+      const orderMap: Record<string, number> = {
+        xy: 1,
+        xz: -1,
+        yx: -1,
+        yz: 1,
+        zx: 1,
+        zy: -1,
+      };
+
+      // default front-right visible
+      let L: TVectorEntry = [LR[0], -LR[1]];
+      if (U[1] * F[1] * LR[1] * orderMap[`${U[0]}${F[0]}`] < 0) {
+        // left-front visible
+        const [a, b] = new Three.Vector3(direction[U[0]], direction[F[0]], 0)
+          .normalize()
+          .toArray();
+        if (Math.abs(a - b) < 0.1) {
+          L = [F[0], -F[1]];
+        } else {
+          L = [LR[0], LR[1]];
+        }
+      }
+
+      const [upFaceIndex] = faceInfoEntries.find(
+        ([, v]) => v.axis === U[0] && v.direction === U[1]
+      )!;
+
+      const [leftFaceIndex] = faceInfoEntries.find(
+        ([, v]) => v.axis === L[0] && v.direction === L[1]
+      )!;
+
+      const orientation = Object.keys(coreOrientationMap).find((k) =>
+        k.startsWith(`${upFaceIndex}${leftFaceIndex}`)
+      )!;
+
+      setOrientation(orientation);
+    }, [cameraInfo]);
+
+    React.useEffect(() => {
+      if (!onChangeRef.current) {
+        return;
+      }
+      const corePermutation = getCorePermutation(cubeState);
+      if (corePermutation === orientation) {
+        return;
+      }
+      let operation = operations[corePermutation];
+      if (!operation.reverseAlgorithm) {
+        return;
+      }
+      let tmpState = operate(
+        operations,
+        cubeState,
+        operation.reverseAlgorithm,
+        defaultState
+      );
+      operation = operations[orientation];
+      if (!operation.algorithm) {
+        onChangeRef.current(tmpState);
+        return;
+      }
+      tmpState = operate(
+        operations,
+        tmpState,
+        operation.algorithm,
+        defaultState
+      );
+      onChangeRef.current(tmpState);
+    }, [cubeState, orientation]);
+
+    React.useEffect(() => {
+      const tmpState = orientate(operations, cubeState, defaultState);
       // new cube
-      const cubeB = stateToCube(cubeState);
+      const cubeB = stateToCube(tmpState);
       // current cube
       const cubeA = cubeRef.current;
       // always update current cube
@@ -253,18 +442,30 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
       );
       if (!operation) {
         // recreate cube geometry when operation not found
-        setInitialCubeState(cubeState);
+        console.error("no operation found!");
+        setInitialCubeState(tmpState);
+        setOrientation("012345");
         return;
       }
       const [operationName] = operation;
+      if (operationName === "012345") {
+        return;
+      }
       if (!(operationName in rotateParams)) {
+        console.error(`unknown operationName ${operationName}!`);
         // recreate cube geometry when imperative api for operation doesn't exists
-        setInitialCubeState(cubeState);
+        setInitialCubeState(tmpState);
+        setOrientation("012345");
         return;
       }
       // animate changes
-      cubeControlsRef.current.rotate?.(...rotateParams[operationName]);
-    }, [cubeState]);
+      const operationParams = rotateParams[operationName];
+      const params =
+        typeof operationParams === "function"
+          ? operationParams(tmpState)
+          : operationParams;
+      cubeControlsRef.current.rotate?.(...params);
+    }, [cubeState, rotateParams]);
 
     React.useImperativeHandle(
       forwardRef,
@@ -275,6 +476,9 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
     );
 
     const { reactElement } = useThree(350, 275, init);
+
+    const upFaceName = alternateFaceNames[Number(orientation[0])];
+    const lookAtFaceName = alternateFaceNames[Number(orientation[2])];
 
     return (
       <div
@@ -302,9 +506,13 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
               10}, {Math.floor(10 * cameraInfo.direction.y) / 10},{" "}
             {Math.floor(10 * cameraInfo.direction.z) / 10})
             <br />
-            Camera rotation:{" "}
-            {Math.floor((180 * cameraInfo.rotationZ) / Math.PI)}
-            &deg;
+            Camera up: ({Math.floor(10 * cameraInfo.up.x) / 10},{" "}
+            {Math.floor(10 * cameraInfo.up.y) / 10},{" "}
+            {Math.floor(10 * cameraInfo.up.z) / 10})
+            <br />
+            Up: {upFaceName}
+            <br />
+            Front: {lookAtFaceName}
           </div>
         )}
       </div>

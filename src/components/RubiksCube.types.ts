@@ -12,6 +12,12 @@ export enum EPerspective {
   ISOMETRIC = 3,
 }
 
+export type TRotateParam = [number, number, boolean];
+export type TRotateParams = Record<
+  string,
+  TRotateParam | ((state: TCubeState) => TRotateParam)
+>;
+
 export interface ICubeProps {
   cubeState?: TCubeState;
   texture?: string;
@@ -20,6 +26,7 @@ export interface ICubeProps {
   onChange?: (cubeState: TCubeState) => void;
   onSwipeU?: (faceIndex: number, uDirection: number, vPoint: number) => void;
   onSwipeV?: (faceIndex: number, uPoint: number, vDirection: number) => void;
+  rotateParams?: TRotateParams;
 }
 
 export interface ICubeHandle {

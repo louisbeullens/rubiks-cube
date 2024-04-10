@@ -1,21 +1,59 @@
-import { TCubeState } from "../rubiks-cube/types";
+import React from "react";
+import { setupGANCube } from "../gan";
+import { useLatestRef } from "../hooks";
+import { releaseWakeLock, renewWakeLock } from "../wakelock";
 import { Flex } from "./Flex";
 
 interface IMoveButtonsProps {
-  state: TCubeState;
   movesAllowed: Record<string, boolean>;
   onClick?: (move: string) => void;
 }
 
-export const MoveButtons = ({
-  state: stateProp,
-  movesAllowed,
-  onClick,
-}: IMoveButtonsProps) => {
+export const MoveButtons = ({ movesAllowed, onClick }: IMoveButtonsProps) => {
+  const onClickRef = useLatestRef(onClick);
+  const [device, setDevice] = React.useState<BluetoothDevice | null>(null);
+
+  React.useEffect(
+    () => () => {
+      device?.gatt?.disconnect();
+    },
+    [device]
+  );
+
+  React.useEffect(
+    () => () => {
+      releaseWakeLock();
+    },
+    []
+  );
+
   // internal buttonClick handler
   const onMoveButtonClickInternal = (move: string) => {
-    onClick?.(move);
+    onClickRef.current?.(move);
   };
+
+  const ganCb = React.useCallback(async (move: string) => {
+    onClickRef.current?.(move);
+    await renewWakeLock();
+  }, []);
+
+  const onBluetoothButtonClick = async () => {
+    if (device?.gatt?.connected) {
+      releaseWakeLock();
+      device.gatt.disconnect();
+      setDevice(null);
+      return;
+    }
+    const ganCube = await setupGANCube(ganCb);
+    ganCube.addEventListener("gattserverdisconnected", () => {
+      releaseWakeLock();
+      setDevice(null);
+    });
+    setDevice(ganCube);
+    await renewWakeLock();
+  };
+
+  const ganConnected = device?.gatt?.connected;
 
   return (
     <>
@@ -37,6 +75,16 @@ export const MoveButtons = ({
             ))}
           </Flex>
         ))}
+      <Flex grow row>
+        <Flex grow column>
+          <button
+            style={{ lineHeight: "3rem" }}
+            onClick={onBluetoothButtonClick}
+          >
+            {ganConnected ? "Disconnect" : "Connect"}
+          </button>
+        </Flex>
+      </Flex>
     </>
   );
 };

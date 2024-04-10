@@ -1,6 +1,7 @@
 import React from "react";
 import { ICubeCharacteristic } from "../cube-characteristics";
 import texture from "../images/earth-cube.png";
+import { rubiksCubeRotateParams } from "./Cube3D";
 import { getRubiksCubeMovesAllowed, RubiksCube } from "./RubiksCube";
 import { ECubeType, ICubeProps } from "./RubiksCube.types";
 
@@ -10,6 +11,7 @@ export const earthCubeCharacteristic: ICubeCharacteristic = {
   hidden: true,
   texture,
   getMovesAllowed: getRubiksCubeMovesAllowed,
+  rotateParams: rubiksCubeRotateParams,
 };
 
 export const EarthCube = ({
