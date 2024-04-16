@@ -13,12 +13,22 @@ export const MoveButtons = ({ movesAllowed, onClick }: IMoveButtonsProps) => {
   const onClickRef = useLatestRef(onClick);
   const [device, setDevice] = React.useState<BluetoothDevice | null>(null);
 
-  React.useEffect(
-    () => () => {
+  React.useEffect(() => {
+    if (!device) {
+      return;
+    }
+    const visibilityChangeHandler = () => {
+      if (document.visibilityState === "hidden") {
+        return;
+      }
+      renewWakeLock();
+    };
+    document.addEventListener("visibilitychange", visibilityChangeHandler);
+    return () => {
+      document.removeEventListener("visibilitychange", visibilityChangeHandler);
       device?.gatt?.disconnect();
-    },
-    [device]
-  );
+    };
+  }, [device]);
 
   React.useEffect(
     () => () => {

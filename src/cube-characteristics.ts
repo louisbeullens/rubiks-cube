@@ -1,8 +1,4 @@
-import {
-  ECubeType,
-  TRotateParam,
-  TRotateParams,
-} from "./components/RubiksCube.types";
+import { ECubeType, TRotateParams } from "./components/RubiksCube.types";
 import { TCubeState } from "./rubiks-cube/types";
 
 export interface ICubeCharacteristic {

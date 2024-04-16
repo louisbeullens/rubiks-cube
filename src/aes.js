@@ -1,3 +1,4 @@
+/* eslint-disable no-sequences */
 const exp3 = Array.from({ length: 256 }, () => 0x00);
 const log3 = Array.from({ length: 256 }, () => 0xff);
 const sbox = Array.from({ length: 256 }, () => 0x00);
