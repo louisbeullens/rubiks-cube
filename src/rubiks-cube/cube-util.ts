@@ -3,6 +3,10 @@ import { getFacesOfPoint3D, IPoint3D, uvToIndex } from "./spatial-util";
 import rubikCubies from "./textureCubies";
 import { TCube, TCubeState, TCubies } from "./types";
 
+const defaultCoordinateMapping = [
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+];
+
 export function textToCube(text: string[]) {
   return [
     // U
@@ -320,7 +324,11 @@ export function cubeToState(cube: TCube, cubies: TCubies = rubikCubies) {
   return state;
 }
 
-export function stateToCube(state: TCubeState, cubies: TCubies = rubikCubies) {
+export function stateToCube(
+  state: TCubeState,
+  cubies: TCubies = rubikCubies,
+  coordinateMapping: number[] = defaultCoordinateMapping
+) {
   const cube = [
     Array.from({ length: 9 }, () => 6),
     Array.from({ length: 9 }, () => 6),
@@ -335,7 +343,7 @@ export function stateToCube(state: TCubeState, cubies: TCubies = rubikCubies) {
 
     const edgeId = state[i];
     const base = Math.floor(edgeId / 2);
-    const edgeCoordinate = coordinates[base - 1];
+    const edgeCoordinate = coordinates[coordinateMapping[base - 1]];
     const parity =
       (coordinate.x && edgeCoordinate.x) || (!coordinate.x && !edgeCoordinate.x)
         ? 0
@@ -356,8 +364,8 @@ export function stateToCube(state: TCubeState, cubies: TCubies = rubikCubies) {
     const { xFace, yFace, zFace } = getCubieInfoByPosition(coordinate);
 
     const cornerId = state[offset];
-    const base = Math.floor(cornerId / 3);
-    const parity = (i + base - 1) % 2 ? 1 : 0;
+    const base = coordinateMapping[Math.floor(cornerId / 3) - 1];
+    const parity = (i + base) % 2 ? 1 : 0;
     const cubie = cubies[cornerId];
     const [xColor, yColor, zColor] = cubie;
 

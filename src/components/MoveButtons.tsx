@@ -1,6 +1,7 @@
 import React from "react";
-import { setupGANCube } from "../gan";
+import { ganCube } from "../gan";
 import { useLatestRef } from "../hooks";
+import { useGanCube } from "../hooks/useGanCube";
 import { releaseWakeLock, renewWakeLock } from "../wakelock";
 import { Flex } from "./Flex";
 
@@ -11,7 +12,7 @@ interface IMoveButtonsProps {
 
 export const MoveButtons = ({ movesAllowed, onClick }: IMoveButtonsProps) => {
   const onClickRef = useLatestRef(onClick);
-  const [device, setDevice] = React.useState<BluetoothDevice | null>(null);
+  const device = useGanCube();
 
   React.useEffect(() => {
     if (!device) {
@@ -23,10 +24,15 @@ export const MoveButtons = ({ movesAllowed, onClick }: IMoveButtonsProps) => {
       }
       renewWakeLock();
     };
+    const moveHandler = async (event: Event) => {
+      onClickRef.current?.(ganCube.lastMove);
+      await renewWakeLock();
+    };
+    device.addEventListener("moved", moveHandler);
     document.addEventListener("visibilitychange", visibilityChangeHandler);
     return () => {
       document.removeEventListener("visibilitychange", visibilityChangeHandler);
-      device?.gatt?.disconnect();
+      device.removeEventListener("moved", moveHandler);
     };
   }, [device]);
 
@@ -42,28 +48,15 @@ export const MoveButtons = ({ movesAllowed, onClick }: IMoveButtonsProps) => {
     onClickRef.current?.(move);
   };
 
-  const ganCb = React.useCallback(async (move: string) => {
-    onClickRef.current?.(move);
-    await renewWakeLock();
-  }, []);
-
   const onBluetoothButtonClick = async () => {
-    if (device?.gatt?.connected) {
-      releaseWakeLock();
-      device.gatt.disconnect();
-      setDevice(null);
+    if (device?.connected) {
+      await releaseWakeLock();
+      await device.disconnect();
       return;
     }
-    const ganCube = await setupGANCube(ganCb);
-    ganCube.addEventListener("gattserverdisconnected", () => {
-      releaseWakeLock();
-      setDevice(null);
-    });
-    setDevice(ganCube);
+    await ganCube.connect();
     await renewWakeLock();
   };
-
-  const ganConnected = device?.gatt?.connected;
 
   return (
     <>
@@ -91,7 +84,7 @@ export const MoveButtons = ({ movesAllowed, onClick }: IMoveButtonsProps) => {
             style={{ lineHeight: "3rem" }}
             onClick={onBluetoothButtonClick}
           >
-            {ganConnected ? "Disconnect" : "Connect"}
+            {device?.connected ? "Disconnect" : "Connect"}
           </button>
         </Flex>
       </Flex>

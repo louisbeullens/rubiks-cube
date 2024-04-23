@@ -1,7 +1,8 @@
 import React from "react";
 import { getCubeCharacteristicsByType } from "../cube-characteristics";
+import { ganCube } from "../gan";
 import { useLatestRef } from "../hooks";
-import { defaultState } from "../rubiks-cube/cube-util";
+import { cubeToState, defaultState } from "../rubiks-cube/cube-util";
 import fundamentalOperations from "../rubiks-cube/fundamentalOperations";
 import {
   createOperationMap,
@@ -188,11 +189,21 @@ export const CubeController = ({
     setPerspective(perspective);
   };
 
-  const onLoadClickInternal = () => {
-    const data = storageRef.current?.load();
-    if (!data) {
+  const onLoadClickInternal = async () => {
+    let data = storageRef.current?.load();
+    if (data) {
+      loadConfig(data);
       return;
     }
+    const ganState = await ganCube.requestFacelets();
+    if (!ganState) {
+      return;
+    }
+    data = {
+      type: characteristic.type,
+      perspective: perspective,
+      state: cubeToState(ganState),
+    };
     loadConfig(data);
   };
 
