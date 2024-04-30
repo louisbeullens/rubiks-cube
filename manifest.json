@@ -10,10 +10,10 @@
   ],
   "start_url": ".",
   "display_override": [
-    "fullscreen",
+    "standalone",
     "minimal-ui"
   ],
-  "display": "standalone",
+  "display": "fullscreen",
   "theme_color": "#000000",
   "background_color": "#ffffff",
   "launch_handler": {
