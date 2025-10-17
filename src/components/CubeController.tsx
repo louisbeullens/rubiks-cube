@@ -279,6 +279,82 @@ export const CubeController = ({
     setState(newState);
   };
 
+  const onScriptClickInternal = async () => {
+    let tmpState = stateRef.current;
+
+    const sleep = (ms: number) =>
+      new Promise((resolve) => setTimeout(resolve, ms));
+
+    // D R' D L2 R2 U' R U' B U2 D' R D L2 R2 U' R' U D2 F'
+
+    let c = 0;
+
+    for (let j = 0; j < 1; j++) {
+      for (const move of "B2 U' B U' L U2 D' B D F2 B2 U' B' U D2 U2 F2".split(
+        " "
+      )) {
+        tmpState = operate(operations, tmpState, move);
+        if (cubeRef?.current) {
+          cubeRef.current.cubeState = tmpState;
+        }
+        stateRef.current = tmpState;
+        setState(tmpState);
+        console.log(++c);
+        await sleep(100);
+      }
+
+      // for (const move of "U F' U F2 B2 D' F D' L".split(" ")) {
+      //   tmpState = operate(operations, tmpState, move);
+      //   if (cubeRef?.current) {
+      //     cubeRef.current.cubeState = tmpState;
+      //   }
+      //   stateRef.current = tmpState;
+      //   setState(tmpState);
+      //   console.log(++c);
+      //   await sleep(100);
+      // }
+
+      // for (let i = 0; i < 839; i++) {
+      //   for (const move of "D R' D L2 R2 U' R U' B U2 D' R D L2 R2 U'".split(
+      //     " "
+      //   )) {
+      //     tmpState = operate(operations, tmpState, move);
+      //     if (cubeRef?.current) {
+      //       cubeRef.current.cubeState = tmpState;
+      //     }
+      //     stateRef.current = tmpState;
+      //     setState(tmpState);
+      //     console.log(++c);
+      //     await sleep(100);
+      //   }
+      // }
+
+      // for (let i = 0; i < 839; i++) {
+      //   for (const move of "R' U D2 F'".split(" ")) {
+      //     tmpState = operate(operations, tmpState, move);
+      //     if (cubeRef?.current) {
+      //       cubeRef.current.cubeState = tmpState;
+      //     }
+      //     stateRef.current = tmpState;
+      //     setState(tmpState);
+      //     console.log(++c);
+      //     await sleep(100);
+      //   }
+      // }
+
+      // for (const move of "D2 U' F U F2 B2 D' F' B D'".split(" ")) {
+      //   tmpState = operate(operations, tmpState, move);
+      //   if (cubeRef?.current) {
+      //     cubeRef.current.cubeState = tmpState;
+      //   }
+      //   stateRef.current = tmpState;
+      //   setState(tmpState);
+      //   console.log(++c);
+      //   await sleep(100);
+      // }
+    }
+  };
+
   const onStorageChange = (item?: IStorageData) => {
     if (!autoStorageRef.current || !item) {
       return;
@@ -343,6 +419,7 @@ export const CubeController = ({
               <button onClick={onLoadClickInternal}>Load</button>
               <button onClick={onSaveClickInternal}>Save</button>
               <button onClick={onShareClickInternal}>Share</button>
+              {/* <button onClick={onScriptClickInternal}>Script</button> */}
             </Flex>
             <Flex row>
               Perspective

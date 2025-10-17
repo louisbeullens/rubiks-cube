@@ -1,7 +1,8 @@
 import React from "react";
 import * as Three from "three";
+import { createHandle } from "../component-utils";
 import { isDebugActive } from "../config";
-import { useLatestRef } from "../hooks";
+import { useControlledState, useLatestRef } from "../hooks";
 import { TInitFn, TOnAnimateFn, useThree } from "../hooks/useThree";
 import defaultTexture from "../images/rubiks-cube.png";
 import {
@@ -112,13 +113,17 @@ const alternateFaceNames = [
 export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
   (
     {
-      cubeState = defaultState,
+      cubeState: cubeStateProp,
       texture: textureProp = defaultTexture,
       rotateParams = rubiksCubeRotateParams,
       onChange,
     },
     forwardRef
   ) => {
+    const [cubeState, setCubeState] = useControlledState(
+      defaultState,
+      cubeStateProp
+    );
     const onChangeRef = useLatestRef(onChange);
     // store cube state for creating geometry
     const [initialCubeState, setInitialCubeState] = React.useState(
@@ -467,11 +472,15 @@ export const Cube3D = React.forwardRef<ICubeHandle, ICubeProps>(
       cubeControlsRef.current.rotate?.(...params);
     }, [cubeState, rotateParams]);
 
+    // add imperative api for uncontrolled input.
     React.useImperativeHandle(
       forwardRef,
-      () => ({
-        cubeState,
-      }),
+      () =>
+        createHandle<ICubeHandle>({
+          valueKey: "cubeState",
+          value: cubeState,
+          setValue: setCubeState,
+        }),
       [cubeState]
     );
 

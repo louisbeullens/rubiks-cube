@@ -3,6 +3,7 @@ import {
   getAllCubeCharacteristics,
   ICubeCharacteristic,
 } from "../cube-characteristics";
+import { useLatestRef } from "../hooks";
 import {
   createNewItem,
   persistItem,
@@ -22,6 +23,8 @@ export const CubeStorage = React.forwardRef<
   ICubeStorageHandle,
   ICubeStorageProps
 >(({ onChange }, ref) => {
+  const onChangeRef = useLatestRef(onChange);
+
   const [items, setItems] = React.useState<IListItem<IStorageData>[]>([]);
 
   const [selectedItem, setSelectedItem] = React.useState<
@@ -32,8 +35,7 @@ export const CubeStorage = React.forwardRef<
     const items = retrieveItems();
     setItems(items);
     setSelectedItem(items[0]);
-    onChange?.(items[0]);
-    // eslint-disable-next-line @grncdr/react-hooks/exhaustive-deps
+    onChangeRef.current?.(items[0]);
   }, []);
 
   const onChangeInternal: IListProps<IStorageData>["onChange"] = (item) => {

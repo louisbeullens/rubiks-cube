@@ -1,6 +1,11 @@
-import { stateToCube } from "./rubiks-cube/cube-util";
+import { CubeUtil } from "./rubiks-cube/cube-util";
 import ganCubies from "./rubiks-cube/ganCubies";
 import { aesDecrypt, aesEncrypt, iv, key } from "./aes";
+
+const ganCubeUtil = new CubeUtil();
+ganCubeUtil.primaryEdgeAxis = "y";
+ganCubeUtil.auxiliaryEdgeAxis = "z";
+ganCubeUtil.cornerAxis = "y";
 
 const MISSING_CENTERS = [84, 88, 92, 96, 100, 104];
 
@@ -83,32 +88,13 @@ const decode = (value, ganCube) => {
       ...MISSING_CENTERS,
     ];
 
-    console.log(position);
-    console.log(orientation);
-
-    // console.log(
-    //   position
-    //     .slice(0, 12)
-    //     .map((el, i) => (el === i ? undefined : i))
-    //     .filter((el) => el !== undefined)
-    // );
-
-    // console.log(
-    //   position
-    //     .slice(12, 20)
-    //     .map((el, i) => (el === i ? undefined : i + 12))
-    //     .filter((el) => el !== undefined)
-    // );
-
-    // console.log({
-    //   edges: orientation.slice(0, 12).every((el) => el === 0),
-    //   corners: orientation.slice(12, 20).every((el) => el === 0),
-    // });
-    console.log(cubeState);
-
     ganCube.dispatchEvent(
       new CustomEvent("facelets", {
-        detail: stateToCube(cubeState, ganCubies, coordinateMapping),
+        detail: ganCubeUtil.stateToCube(
+          cubeState,
+          ganCubies,
+          coordinateMapping
+        ),
       })
     );
   }

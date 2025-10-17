@@ -1,6 +1,7 @@
 {
   "short_name": "Rubik's Cube",
   "name": "Rubik's Cube Simulator",
+  "scope": "https://louisbeullens.github.io/rubiks-cube/",
   "icons": [
     {
       "src": "rubiks.png",

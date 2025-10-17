@@ -1,4 +1,3 @@
-import React from "react";
 import { useSearchParams } from "react-router-dom";
 import { CubeController } from "./components/CubeController";
 import { earthCubeCharacteristic } from "./components/EarthCube";
@@ -23,13 +22,10 @@ const protocolRegexp = /^web(?:\+|\s)rubik:(?:\/\/)?([^/]+)\/?$/;
 function App() {
   const [params, setParams] = useSearchParams();
 
-  const onSaveClick = React.useCallback(
-    (data: IStorageData) => {
-      const permaLink = serializeCube(data);
-      setParams({ config: permaLink });
-    },
-    [setParams]
-  );
+  const onSaveClick = (data: IStorageData) => {
+    const permaLink = serializeCube(data);
+    setParams({ config: permaLink });
+  };
 
   // extract permalink from protocol url or fallback to config search param
   const protocol = params.get("protocol") ?? "";
